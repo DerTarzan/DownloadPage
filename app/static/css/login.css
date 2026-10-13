@@ -1,0 +1,30 @@
+/* Admin login */
+.auth-card {
+  width: 100%;
+  max-width: 460px;
+  margin: clamp(24px, 6vw, 56px) auto;
+  padding: clamp(24px, 6vw, 40px);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.auth-card h1 {
+  font-size: 1.6rem;
+}
+
+.auth-card .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.login-intro {
+  margin: 0 0 26px;
+}
+
+@media (max-width: 520px) {
+  .auth-card {
+    border-radius: 16px;
+  }
+}

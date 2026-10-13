@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Anmelden – {{ site_name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/login.css">{% endblock %}
+{% block content %}
+<div class="auth-card">
+  <h1>Admin-Anmeldung</h1>
+  <p class="login-intro muted-text">Melde dich an, um Inhalte zu verwalten.</p>
+  <div id="msg" class="alert err" role="alert"></div>
+  <form id="f">
+    <div class="field"><label for="u">Benutzername</label><input id="u" name="username" autocomplete="username" required autofocus></div>
+    <div class="field"><label for="p">Passwort</label><input id="p" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn">Anmelden</button>
+  </form>
+</div>
+<script>
+document.getElementById("f").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const b = e.target.querySelector("button"), fd = new FormData(e.target);
+  b.disabled = true;
+  const r = await fetch("/auth/login", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({username: fd.get("username"), password: fd.get("password")})});
+  if (r.ok) { location.href = "/admin"; return; }
+  const body = await r.json().catch(() => ({}));
+  document.getElementById("msg").textContent = typeof body.detail === "string" ? body.detail : "Anmeldung fehlgeschlagen";
+  b.disabled = false;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+"""Zentrale Konfiguration (aus Umgebungsvariablen bzw. .env)."""
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parents[2] / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    app_name: str = "Dokumentenplattform"
+    environment: str = "production"  # development | production | test
+    docs_enabled: bool = True  # /docs und /redoc
+
+    database_url: str
+    secret_key: str = Field(min_length=32)
+
+    # Nur für den initialen Admin (CLI / seed-admin). Nach dem ersten Start entfernbar.
+    admin_username: str | None = None
+    admin_password: str | None = None
+
+    storage_dir: Path = Path("storage")
+    max_pdf_size_mb: int = Field(default=50, ge=1)
+    max_image_size_mb: int = Field(default=5, ge=1)
+
+    session_ttl_hours: int = Field(default=12, ge=1)
+    cookie_secure: bool = True  # lokal über http: COOKIE_SECURE=false
+    login_max_attempts: int = Field(default=5, ge=1)
+    login_lockout_seconds: int = Field(default=300, ge=1)
+
+    log_level: str = "INFO"
+
+    @property
+    def max_pdf_bytes(self) -> int:
+        return self.max_pdf_size_mb * 1024 * 1024
+
+    @property
+    def max_image_bytes(self) -> int:
+        return self.max_image_size_mb * 1024 * 1024
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()  # type: ignore[call-arg]

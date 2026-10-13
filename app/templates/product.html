@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} – {{ site_name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/product.css">{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Brotkrumen"><a href="/">Start</a><span>/</span><a href="/{{ category.slug }}">{{ category.name }}</a><span>/</span><span aria-current="page">{{ product.name }}</span></nav>
+<section class="product">
+  <div class="product-media">{% if product.image_url %}<img src="{{ product.image_url }}" alt="{{ product.name }}">{% else %}<span class="ph">{{ product.name[:1] }}</span>{% endif %}</div>
+  <div><h1>{{ product.name }}</h1>{% if product.description %}<p class="prose">{{ product.description }}</p>{% endif %}</div>
+</section>
+<section aria-labelledby="docs-h">
+  <h2 id="docs-h">Dokumente &amp; Downloads</h2>
+  {% if documents %}
+  <div class="docs">
+    {% for d in documents %}
+    <article class="doc">
+      <div class="doc-icon" aria-hidden="true">PDF</div>
+      <div class="doc-info">
+        <h3>{{ d.title }}</h3>
+        <p class="doc-meta">Version {{ d.version }} · {% if d.file_size >= 1048576 %}{{ '%.1f'|format(d.file_size / 1048576) }} MB{% else %}{{ (d.file_size / 1024)|round|int }} KB{% endif %}</p>
+        {% if d.description %}<p>{{ d.description }}</p>{% endif %}
+      </div>
+      <a class="btn" href="/{{ category.slug }}/{{ product.slug }}/dokument/{{ d.id }}/download" aria-label="{{ d.title }} herunterladen">Herunterladen</a>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}<div class="empty">Zu diesem Produkt sind noch keine Dokumente verfügbar.</div>{% endif %}
+</section>
+{% endblock %}

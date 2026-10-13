@@ -1,0 +1,26 @@
+/* Homepage hero */
+.hero {
+  margin-bottom: clamp(36px, 6vw, 56px);
+  padding: clamp(32px, 7vw, 76px);
+  border-radius: 24px;
+  background: linear-gradient(135deg, var(--primary), color-mix(in srgb, var(--primary) 55%, #0a2a45));
+  color: var(--on-primary);
+  box-shadow: var(--shadow);
+}
+
+.hero h1 {
+  margin-bottom: .3em;
+}
+
+.hero p {
+  max-width: 56ch;
+  margin: 0;
+  font-size: clamp(1.05rem, 2vw, 1.2rem);
+  opacity: .92;
+}
+
+@media (max-width: 520px) {
+  .hero {
+    border-radius: 20px;
+  }
+}

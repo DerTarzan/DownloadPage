@@ -1,0 +1,22 @@
+<script>
+// API-Helfer: Cookie-Session + CSRF-Header. Daten niemals per innerHTML einfügen!
+let CSRF = null;
+async function api(method, url, body) {
+  if (!CSRF) {
+    const me = await fetch("/auth/me");
+    if (!me.ok) { location.href = "/admin/login"; throw new Error("not logged in"); }
+    CSRF = (await me.json()).csrf_token;
+  }
+  const opts = {method, headers: {"X-CSRF-Token": CSRF}};
+  if (body instanceof FormData) opts.body = body;
+  else if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  const r = await fetch(url, opts);
+  if (r.status === 401) { location.href = "/admin/login"; throw new Error("unauthorized"); }
+  const data = r.status === 204 ? null : await r.json().catch(() => null);
+  if (!r.ok) throw new Error(typeof data?.detail === "string" ? data.detail : JSON.stringify(data?.detail ?? r.status));
+  return data;
+}
+const el = (tag, text, attrs) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; return Object.assign(e, attrs || {}); };
+const badge = (t, cls) => el("span", t, {className: "badge " + (cls || "")});
+const btn = (t, cls, fn) => el("button", t, {className: "btn btn-sm " + cls, type: "button", onclick: fn});
+</script>

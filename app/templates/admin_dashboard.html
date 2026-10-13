@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – {{ site_name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/admin_dashboard.css">{% endblock %}
+{% block nav %}{% include "_admin_nav.html" %}{% endblock %}
+{% block content %}
+<div class="admin-head"><h1>Dashboard</h1>
+  <div><span class="muted-text">Angemeldet als <b>{{ admin.username }}</b></span> <button id="logout" class="btn btn-ghost btn-sm">Abmelden</button></div></div>
+<div id="msg" class="alert err" role="alert"></div>
+<div class="stats"><div class="stat"><b id="s-c">–</b><span>Kategorien</span></div><div class="stat"><b id="s-p">–</b><span>Produkte</span></div><div class="stat"><b id="s-d">–</b><span>Dokumente</span></div></div>
+
+<div class="panel"><h2>Wartungsmodus</h2>
+  <form id="maint"><label class="switch"><input type="checkbox" id="mm"> Website für Besucher sperren</label>
+    <div class="row-form"><div><label for="mmsg">Nachricht für Besucher</label><input id="mmsg"></div><button class="btn">Speichern</button></div></form></div>
+
+<div class="two dashboard-two">
+  <div class="panel"><h2>Kategorie anlegen</h2><form id="newcat" class="row-form"><div><label for="cn">Name</label><input id="cn" name="name" required></div><div><label for="cat-image">Bild (optional)</label><input id="cat-image" name="image" type="file" accept="image/png,image/jpeg,image/webp"></div><button class="btn">Anlegen</button></form></div>
+  <div class="panel"><h2>Produkt anlegen</h2><form id="newprod" class="row-form"><div><label for="catsel">Kategorie</label><select name="category_id" id="catsel" required></select></div><div><label for="pn">Name</label><input id="pn" name="name" required></div><div><label for="prod-image">Bild (optional)</label><input id="prod-image" name="image" type="file" accept="image/png,image/jpeg,image/webp"></div><button class="btn">Anlegen</button></form></div>
+</div>
+<p><a class="btn btn-ghost" href="/admin/upload">PDF-Dokument hochladen</a></p>
+<div id="tree"></div>
+
+{% include "_admin_js.html" %}
+<script>
+const msg = document.getElementById("msg");
+const run = async (fn) => { msg.textContent = ""; try { await fn(); await load(); } catch (e) { msg.textContent = e.message; } };
+const sure = (t) => confirm(t);
+let imageInputCount = 0;
+async function load() {
+  const [cats, prods, docs, s] = await Promise.all([api("GET", "/api/admin/categories"), api("GET", "/api/admin/products"), api("GET", "/api/admin/documents"), api("GET", "/api/admin/settings")]);
+  document.getElementById("s-c").textContent = cats.length; document.getElementById("s-p").textContent = prods.length; document.getElementById("s-d").textContent = docs.length;
+  document.getElementById("mm").checked = s.maintenance_mode; document.getElementById("mmsg").value = s.maintenance_message;
+  const sel = document.getElementById("catsel"); sel.replaceChildren(); cats.forEach(c => sel.append(el("option", c.name, {value: c.id})));
+  const tree = document.getElementById("tree"); tree.replaceChildren();
+  if (!cats.length) tree.append(el("div", "Noch keine Kategorien angelegt.", {className: "empty"}));
+  cats.forEach(c => {
+    const panel = el("div", undefined, {className: "panel"}), head = el("div", undefined, {className: "cat-head"}), actions = el("div", undefined, {className: "actions"});
+    head.append(el("h2", c.name), el("span", "/" + c.slug, {className: "slug"}), ...(c.active ? [] : [badge("inaktiv", "off")]));
+    actions.append(btn(c.active ? "Deaktivieren" : "Aktivieren", "btn-ghost", () => run(() => api("PUT", `/api/admin/categories/${c.id}`, {active: !c.active}))),
+      btn("Löschen", "btn-danger", () => sure("Kategorie samt Produkten, Dokumenten und Dateien löschen?") && run(() => api("DELETE", `/api/admin/categories/${c.id}?cascade=true`))));
+    head.append(actions); panel.append(head);
+    panel.append(imageControls("Kategorie", c.image_url, c.name, `/api/admin/categories/${c.id}/image`));
+    const list = prods.filter(p => p.category_id === c.id);
+    if (!list.length) panel.append(el("p", "Keine Produkte.", {className: "slug"}));
+    list.forEach(p => {
+      const row = el("div", undefined, {className: "prod"}), pr = el("div", undefined, {className: "prod-row"}), pa = el("div", undefined, {className: "actions"});
+      pr.append(el("b", p.name), el("span", `/${c.slug}/${p.slug}`, {className: "slug"}), ...(p.active ? [] : [badge("inaktiv", "off")]));
+      pa.append(btn(p.active ? "Deaktivieren" : "Aktivieren", "btn-ghost", () => run(() => api("PUT", `/api/admin/products/${p.id}`, {active: !p.active}))),
+        btn("Löschen", "btn-danger", () => sure("Produkt samt Dokumenten löschen?") && run(() => api("DELETE", `/api/admin/products/${p.id}?cascade=true`))));
+      pr.append(pa); row.append(pr);
+      row.append(imageControls("Produkt", p.image_url, p.name, `/api/admin/products/${p.id}/image`));
+      docs.filter(d => d.product_id === p.id).forEach(d => {
+        const dr = el("div", undefined, {className: "doc-row"}), da = el("div", undefined, {className: "actions"});
+        dr.append(el("span", `${d.title} · v${d.version}`), ...(d.active ? [] : [badge("inaktiv", "off")]));
+        da.append(btn(d.active ? "Deaktivieren" : "Aktivieren", "btn-ghost", () => run(() => api("PUT", `/api/admin/documents/${d.id}`, {active: !d.active}))),
+          btn("Löschen", "btn-danger", () => sure("Dokument löschen?") && run(() => api("DELETE", `/api/admin/documents/${d.id}`))));
+        dr.append(da); row.append(dr);
+      });
+      panel.append(row);
+    });
+    tree.append(panel);
+  });
+}
+function imageControls(label, imageUrl, name, endpoint) {
+  const controls = el("div", undefined, {className: "image-controls"});
+  const preview = el("img", undefined, {
+    className: "admin-image-preview",
+    alt: `${name} - Bildvorschau`,
+    hidden: !imageUrl
+  });
+  if (imageUrl) preview.src = imageUrl;
+  const inputId = `image-${++imageInputCount}`;
+  const field = el("div", undefined, {className: "image-field"});
+  const input = el("input", undefined, {
+    id: inputId,
+    type: "file",
+    accept: "image/png,image/jpeg,image/webp",
+    onchange: () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = input.files[0] ? URL.createObjectURL(input.files[0]) : "";
+      preview.hidden = !previewUrl;
+      if (previewUrl) preview.src = previewUrl;
+    }
+  });
+  let previewUrl = "";
+  input.setAttribute("aria-label", `${label}bild auswählen`);
+  field.append(el("label", `${imageUrl ? "Bild ändern" : "Bild hinzufügen"} (PNG, JPEG oder WebP)`, {htmlFor: inputId}), input);
+  controls.append(preview, field, btn("Hochladen", "btn-ghost", async () => {
+    if (!input.files.length) {
+      input.focus();
+      msg.textContent = "Bitte wähle zuerst ein Bild aus.";
+      return;
+    }
+    const form = new FormData();
+    form.append("file", input.files[0]);
+    try {
+      await api("POST", endpoint, form);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      await load();
+    } catch (error) {
+      msg.textContent = error.message;
+    }
+  }));
+  if (imageUrl) {
+    controls.append(btn("Bild entfernen", "btn-danger", async () => {
+      try {
+        await api("DELETE", endpoint);
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        await load();
+      } catch (error) {
+        msg.textContent = error.message;
+      }
+    }));
+  }
+  return controls;
+}
+document.getElementById("maint").addEventListener("submit", (e) => { e.preventDefault(); run(() => api("PUT", "/api/admin/settings", {maintenance_mode: document.getElementById("mm").checked, maintenance_message: document.getElementById("mmsg").value})); });
+document.getElementById("newcat").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target;
+  run(async () => {
+    const category = await api("POST", "/api/admin/categories", {name: f.name.value});
+    if (f.image.files.length) {
+      const image = new FormData();
+      image.append("file", f.image.files[0]);
+      try {
+        await api("POST", `/api/admin/categories/${category.id}/image`, image);
+      } catch (error) {
+        f.reset();
+        msg.textContent = `Kategorie angelegt, aber Bild-Upload fehlgeschlagen: ${error.message}`;
+        return;
+      }
+    }
+    f.reset();
+  });
+});
+document.getElementById("newprod").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target;
+  run(async () => {
+    const product = await api("POST", "/api/admin/products", {category_id: Number(f.category_id.value), name: f.name.value});
+    if (f.image.files.length) {
+      const image = new FormData();
+      image.append("file", f.image.files[0]);
+      try {
+        await api("POST", `/api/admin/products/${product.id}/image`, image);
+      } catch (error) {
+        f.name.value = "";
+        f.image.value = "";
+        msg.textContent = `Produkt angelegt, aber Bild-Upload fehlgeschlagen: ${error.message}`;
+        return;
+      }
+    }
+    f.name.value = "";
+    f.image.value = "";
+  });
+});
+document.getElementById("logout").addEventListener("click", async () => { await api("POST", "/auth/logout"); location.href = "/admin/login"; });
+run(async () => {});
+</script>
+{% endblock %}

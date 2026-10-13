@@ -1,0 +1,8 @@
+/* Error page */
+.big-status {
+  color: var(--primary);
+  font-size: clamp(4rem, 14vw, 8rem);
+  font-weight: 800;
+  line-height: 1;
+  opacity: .9;
+}

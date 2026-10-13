@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Start – {{ site_name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/index.css">{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>Produkte &amp; Dokumente</h1>
+  <p>Anleitungen, Datenblätter und Produktinformationen – übersichtlich nach Kategorien sortiert und jederzeit zum Download bereit.</p>
+</section>
+{% if categories %}
+<div class="grid">
+  {% for c in categories %}
+  <a class="card" href="/{{ c.slug }}">
+    <div class="card-media">{% if c.image_url %}<img src="{{ c.image_url }}" alt="" loading="lazy">{% else %}<span class="ph">{{ c.name[:1] }}</span>{% endif %}</div>
+    <div class="card-body"><h2>{{ c.name }}</h2>{% if c.description %}<p>{{ c.description }}</p>{% endif %}<span class="more">Produkte ansehen &rarr;</span></div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}<div class="empty"><h2>Noch keine Kategorien</h2><p>Sobald Inhalte veröffentlicht werden, erscheinen sie hier.</p></div>{% endif %}
+{% endblock %}

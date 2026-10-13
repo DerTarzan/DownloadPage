@@ -1,0 +1,12 @@
+/* Maintenance page */
+.maint-icon {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 18px;
+  color: var(--primary);
+}
+
+.maintenance-message {
+  max-width: 52ch;
+  margin: 0 auto 20px;
+}

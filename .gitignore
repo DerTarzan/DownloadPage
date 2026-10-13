@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+# hochgeladene Dateien nie committen
+storage/images/*
+storage/documents/*
+!storage/images/.gitkeep
+!storage/documents/.gitkeep
+*.log
+.idea/
+.vscode/

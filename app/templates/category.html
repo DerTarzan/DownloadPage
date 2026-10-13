@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name }} – {{ site_name }}{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/category.css">{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Brotkrumen"><a href="/">Start</a><span>/</span><span aria-current="page">{{ category.name }}</span></nav>
+<div class="page-head"><h1>{{ category.name }}</h1>{% if category.description %}<p>{{ category.description }}</p>{% endif %}</div>
+{% if products %}
+<div class="grid">
+  {% for p in products %}
+  <a class="card" href="/{{ category.slug }}/{{ p.slug }}">
+    <div class="card-media">{% if p.image_url %}<img src="{{ p.image_url }}" alt="" loading="lazy">{% else %}<span class="ph">{{ p.name[:1] }}</span>{% endif %}</div>
+    <div class="card-body"><h2>{{ p.name }}</h2>{% if p.description %}<p>{{ p.description }}</p>{% endif %}<span class="more">Details &amp; Dokumente &rarr;</span></div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}<div class="empty"><h2>Keine Produkte</h2><p>In dieser Kategorie gibt es noch keine Produkte.</p></div>{% endif %}
+{% endblock %}
