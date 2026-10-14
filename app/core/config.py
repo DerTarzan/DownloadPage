@@ -27,13 +27,32 @@ class Settings(BaseSettings):
     storage_dir: Path = Path("storage")
     max_pdf_size_mb: int = Field(default=50, ge=1)
     max_image_size_mb: int = Field(default=5, ge=1)
+    max_request_body_kb: int = Field(default=1024, ge=1)  # alle Requests außer Datei-Uploads (JSON, Login, ...)
 
     session_ttl_hours: int = Field(default=12, ge=1)
     cookie_secure: bool = True  # lokal über http: COOKIE_SECURE=false
     login_max_attempts: int = Field(default=5, ge=1)
     login_lockout_seconds: int = Field(default=300, ge=1)
+    login_max_attempts_per_ip: int = Field(default=20, ge=1)  # Fehlversuche je IP über alle Benutzernamen
+    login_max_concurrent_hashes: int = Field(default=4, ge=1)  # gleichzeitige Argon2-Prüfungen (je ~64 MiB RAM)
 
     log_level: str = "INFO"
+
+    def production_warnings(self) -> list[str]:
+        """Unsichere Einstellungen, die in ENVIRONMENT=production nicht gewollt sein sollten.
+        Nur Warnungen (kein Abbruch), damit bestehende Installationen weiterlaufen."""
+        if self.environment.lower() != "production":
+            return []
+        warnings = []
+        if not self.cookie_secure:
+            warnings.append(
+                "COOKIE_SECURE=false: das Session-Cookie wird ohne Secure-Flag gesendet. Hinter HTTPS auf true setzen."
+            )
+        if self.docs_enabled:
+            warnings.append(
+                "DOCS_ENABLED=true: /docs, /redoc und /openapi.json sind öffentlich erreichbar. In Produktion auf false setzen."
+            )
+        return warnings
 
     @property
     def max_pdf_bytes(self) -> int:

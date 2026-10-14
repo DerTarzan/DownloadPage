@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.database import engine
 from app.core.errors import register_exception_handlers
 from app.core.logging_config import setup_logging
+from app.core.request_guard import RequestGuardMiddleware
 from app.routers import admin, auth, categories, documents, products, public
 
 logger = logging.getLogger("app")
@@ -19,6 +20,8 @@ logger = logging.getLogger("app")
 async def lifespan(app: FastAPI):
     s = get_settings()
     logger.info("Server startet (environment=%s, storage=%s)", s.environment, s.storage_dir)
+    for warning in s.production_warnings():
+        logger.warning("Unsichere Produktionskonfiguration – %s", warning)
     yield
     logger.info("Server wird beendet")
 
@@ -38,6 +41,8 @@ def create_app() -> FastAPI:
     )
     register_exception_handlers(app)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+    # VOR security_headers registrieren (= weiter innen): auch Abweisungen bekommen die Sicherheits-Header
+    app.add_middleware(RequestGuardMiddleware)
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
