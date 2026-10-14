@@ -8,8 +8,10 @@ Das Frontend verwendet Jinja-Vorlagen und separate CSS-Dateien für gemeinsame s
 
 ```bash
 # 1. .env mit zufälligen Secrets erzeugen (gibt das Admin-Passwort EINMAL aus)
-python scripts/generate_env.py --admin-username admin
-#    ohne Python: cp .env.example .env  und SECRET_KEY, POSTGRES_PASSWORD, ADMIN_USERNAME, ADMIN_PASSWORD selbst setzen
+python scripts/generate_env.py --admin-username admin           # Produktionsprofil (COOKIE_SECURE=true, Docs aus)
+python scripts/generate_env.py --admin-username admin --local   # lokal über http (COOKIE_SECURE=false, Docs an)
+#    ohne Python: .env.example (Produktion) bzw. .env.local.example (lokal) nach .env kopieren und
+#    SECRET_KEY, POSTGRES_PASSWORD, ADMIN_USERNAME, ADMIN_PASSWORD selbst setzen
 
 # 2. starten (baut das Image, wendet Migrationen an, legt den ersten Admin an)
 docker compose up -d --build
@@ -22,7 +24,11 @@ curl http://localhost:8000/health        # {"status":"ok"}
 |---|---|
 | http://localhost:8000/ | Startseite (Kategorien) |
 | http://localhost:8000/admin/login | Admin-Login (Testseite) |
-| http://localhost:8000/docs | OpenAPI/Swagger |
+| http://localhost:8000/docs | OpenAPI/Swagger (nur mit `DOCS_ENABLED=true`, im Produktionsprofil aus) |
+
+Der App-Port ist standardmäßig nur an `127.0.0.1` gebunden (`APP_BIND` in der `.env`). Für den Zugriff von außen gehört ein
+Reverse Proxy mit TLS davor; `APP_BIND=0.0.0.0` nur bewusst setzen. Das Produktionsprofil setzt `COOKIE_SECURE=true`,
+der Admin-Login funktioniert dann nur über HTTPS (lokal stattdessen das Profil `--local` verwenden).
 
 Im Admin-Dashboard können Kategorie- und Produktbilder beim Anlegen hochgeladen sowie später ersetzt oder entfernt werden.
 Erlaubte Bildformate sind PNG, JPEG und WebP; die maximale Dateigröße wird über `MAX_IMAGE_SIZE_MB` festgelegt.
@@ -58,9 +64,9 @@ Es gibt kein Default-Passwort im Code.
    CREATE DATABASE docplatform OWNER docplatform;
    \q
    ```
-4. Im Projekt die `.env.example` nach `.env` kopieren und `SECRET_KEY` sowie `DATABASE_URL` setzen. Für `SECRET_KEY` einen zufälligen Wert mit mindestens 32 Zeichen verwenden. Das Passwort in `DATABASE_URL` muss genau dem bei `CREATE ROLE` gesetzten Passwort entsprechen:
+4. Im Projekt die `.env.local.example` nach `.env` kopieren und `SECRET_KEY` sowie `DATABASE_URL` setzen. Für `SECRET_KEY` einen zufälligen Wert mit mindestens 32 Zeichen verwenden. Das Passwort in `DATABASE_URL` muss genau dem bei `CREATE ROLE` gesetzten Passwort entsprechen:
    ```powershell
-   Copy-Item .env.example .env
+   Copy-Item .env.local.example .env
    python -c "import secrets; print(secrets.token_urlsafe(48))"
    ```
    Den ausgegebenen Wert als `SECRET_KEY` in `.env` eintragen.
@@ -181,8 +187,16 @@ curl -b jar -H "X-CSRF-Token: <token>" -F file=@handbuch.pdf -F title=Handbuch l
 
 ## Betriebshinweise
 
-* Hinter einem Reverse Proxy mit HTTPS: `COOKIE_SECURE=true` setzen und die Proxy-IP an uvicorn geben (`--forwarded-allow-ips`), damit die Login-Bremse die echte Client-IP sieht.
-* Die Login-Bremse ist pro Prozess; bei mehreren Workern/Instanzen später durch Redis o. Ä. ersetzen.
+* Hinter einem Reverse Proxy mit HTTPS: `COOKIE_SECURE=true` setzen und in der `.env` `FORWARDED_ALLOW_IPS=<IP des Proxys>`
+  eintragen (uvicorn liest die Variable selbst; **niemals `*`**). Nur dann sieht die Login-Bremse die echte Client-IP aus
+  `X-Forwarded-For`; ohne den Eintrag zählen alle Besucher als die Proxy-IP, und ein Angreifer könnte den Admin-Login sperren.
+  Der Port der App sollte nicht direkt öffentlich erreichbar sein (`APP_BIND=127.0.0.1`, Standard).
+* Der Proxy sollte zusätzlich eigene Limits setzen (z. B. Nginx `client_max_body_size`, `limit_req` für `/auth/login`). Die App
+  begrenzt Request-Bodys selbst (`MAX_PDF_SIZE_MB`, `MAX_IMAGE_SIZE_MB`, `MAX_REQUEST_BODY_KB`) und weist schreibende
+  Admin-Requests ohne gültige Session ab, bevor der Body gelesen wird.
+* Login-Bremse: `LOGIN_MAX_ATTEMPTS` je (IP, Benutzer) und `LOGIN_MAX_ATTEMPTS_PER_IP` je IP über alle Benutzernamen innerhalb von
+  `LOGIN_LOCKOUT_SECONDS`; gleichzeitige Passwortprüfungen sind über `LOGIN_MAX_CONCURRENT_HASHES` begrenzt.
+  Die Bremse ist pro Prozess; bei mehreren Workern/Instanzen später durch Redis o. Ä. ersetzen.
 * Backup: Volumes `postgres_data` **und** `document_storage` zusammen sichern (DB enthält nur Metadaten).
 * Erweiterungspunkte: `DocumentService` (Versionierung, Download-Logger `app.downloads`), `FileService` (S3/MinIO),
   `Document.version` → später eigene Versions-Tabelle.

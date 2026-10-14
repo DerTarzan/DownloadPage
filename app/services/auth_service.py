@@ -2,7 +2,7 @@ import logging
 import re
 import threading
 import time
-from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -31,38 +31,93 @@ USERNAME_RE = re.compile(r"^[a-z0-9._-]{3,64}$")
 
 
 class LoginThrottle:
-    """Einfache Brute-Force-Bremse pro (IP, Benutzername). In-Memory, pro Prozess.
-    Bei mehreren Workern/Servern später durch Redis o. ä. ersetzen."""
+    """Brute-Force-Bremse. In-Memory, pro Prozess (bei mehreren Workern/Servern durch Redis o. ä. ersetzen).
 
-    def __init__(self, max_attempts: int, window_seconds: int):
+    Zwei Zähler im selben Zeitfenster:
+    - pro (IP, Benutzername): begrenzt Raten gegen ein bestimmtes Konto
+    - pro IP über alle Benutzernamen: verhindert, dass wechselnde Benutzernamen die Bremse umgehen, und
+      begrenzt damit auch die Zahl teurer Argon2-Prüfungen pro Quelle
+    Der Speicher ist begrenzt (MAX_KEYS); lesende Abfragen legen keine Einträge an."""
+
+    MAX_KEYS = 10_000
+
+    def __init__(self, max_attempts: int, window_seconds: int, max_attempts_per_ip: int | None = None):
         self.max_attempts = max_attempts
+        self.max_attempts_per_ip = max_attempts_per_ip or max_attempts * 4
         self.window = window_seconds
-        self._fails: dict[str, list[float]] = defaultdict(list)
+        self._fails: dict[str, list[float]] = {}
         self._lock = threading.Lock()
 
-    def _prune(self, key: str) -> list[float]:
+    @staticmethod
+    def _user_key(ip: str, username: str) -> str:
+        return f"u|{ip}|{username}"
+
+    @staticmethod
+    def _ip_key(ip: str) -> str:
+        return f"i|{ip}"
+
+    def _recent(self, key: str) -> list[float]:
+        """Aktuelle Fehlversuche; entfernt abgelaufene Einträge (und leere Schlüssel). Legt nie etwas an."""
+        times = self._fails.get(key)
+        if not times:
+            return []
         cutoff = time.monotonic() - self.window
-        self._fails[key] = [t for t in self._fails[key] if t > cutoff]
-        return self._fails[key]
+        fresh = [t for t in times if t > cutoff]
+        if fresh:
+            self._fails[key] = fresh
+        else:
+            del self._fails[key]
+        return fresh
 
-    def is_blocked(self, key: str) -> bool:
+    def is_blocked(self, ip: str, username: str) -> bool:
         with self._lock:
-            return len(self._prune(key)) >= self.max_attempts
+            return (
+                len(self._recent(self._user_key(ip, username))) >= self.max_attempts
+                or len(self._recent(self._ip_key(ip))) >= self.max_attempts_per_ip
+            )
 
-    def register_failure(self, key: str) -> None:
+    def register_failure(self, ip: str, username: str) -> None:
         with self._lock:
-            self._prune(key).append(time.monotonic())
+            if len(self._fails) + 2 > self.MAX_KEYS:  # unten kommen bis zu 2 neue Schlüssel dazu
+                for key in list(self._fails):  # erst abgelaufene Einträge entfernen
+                    self._recent(key)
+                while len(self._fails) + 2 > self.MAX_KEYS:  # sonst den ältesten verdrängen
+                    del self._fails[next(iter(self._fails))]
+            now = time.monotonic()
+            for key in (self._user_key(ip, username), self._ip_key(ip)):
+                self._fails.setdefault(key, []).append(now)
 
-    def reset(self, key: str | None = None) -> None:
+    def clear_user(self, ip: str, username: str) -> None:
+        """Nach erfolgreichem Login: nur den Zähler dieses Kontos zurücksetzen (der IP-Zähler läuft weiter)."""
         with self._lock:
-            if key is None:
-                self._fails.clear()
-            else:
-                self._fails.pop(key, None)
+            self._fails.pop(self._user_key(ip, username), None)
 
+    def reset(self) -> None:
+        with self._lock:
+            self._fails.clear()
+
+
+# Argon2 braucht pro Prüfung ~64 MiB RAM: gleichzeitige Prüfungen begrenzen (Schutz vor Speichererschöpfung)
+HASH_SLOT_TIMEOUT_SECONDS = 5.0
 
 _s = get_settings()
-login_throttle = LoginThrottle(_s.login_max_attempts, _s.login_lockout_seconds)
+login_throttle = LoginThrottle(_s.login_max_attempts, _s.login_lockout_seconds, _s.login_max_attempts_per_ip)
+_hash_slots = threading.BoundedSemaphore(_s.login_max_concurrent_hashes)
+
+
+@contextmanager
+def _hash_slot():
+    if not _hash_slots.acquire(timeout=HASH_SLOT_TIMEOUT_SECONDS):
+        raise TooManyRequestsError("Server ausgelastet, bitte gleich erneut versuchen")
+    try:
+        yield
+    finally:
+        _hash_slots.release()
+
+
+def _loggable_username(norm: str) -> str:
+    """Nur Benutzernamen im erlaubten Format ins Log: Wer sein Passwort ins Benutzername-Feld tippt, soll es dort nicht finden."""
+    return norm if USERNAME_RE.match(norm) else "<ungültig>"
 
 
 @dataclass
@@ -94,19 +149,20 @@ class AuthService:
 
     def login(self, username: str, password: str, client_ip: str | None) -> LoginResult:
         norm = normalize_username(username)
-        key = f"{client_ip}|{norm}"
-        if login_throttle.is_blocked(key):
-            audit.warning("Login gesperrt (zu viele Versuche) user=%r ip=%s", norm[:64], client_ip)
+        ip = client_ip or "unknown"
+        if login_throttle.is_blocked(ip, norm):
+            audit.warning("Login gesperrt (zu viele Versuche) user=%r ip=%s", _loggable_username(norm), client_ip)
             raise TooManyRequestsError()
 
         user = self.users.get_by_username(norm)
-        ok = verify_password(user.password_hash if user else DUMMY_HASH, password)
+        with _hash_slot():
+            ok = verify_password(user.password_hash if user else DUMMY_HASH, password)
         if not user or not ok or not user.is_active:
-            login_throttle.register_failure(key)
-            audit.warning("Login fehlgeschlagen user=%r ip=%s", norm[:64], client_ip)
+            login_throttle.register_failure(ip, norm)
+            audit.warning("Login fehlgeschlagen user=%r ip=%s", _loggable_username(norm), client_ip)
             raise UnauthorizedError("Ungültige Anmeldedaten")
 
-        login_throttle.reset(key)
+        login_throttle.clear_user(ip, norm)
         if password_needs_rehash(user.password_hash):
             user.password_hash = hash_password(password)
         now = utcnow()
