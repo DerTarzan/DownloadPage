@@ -70,9 +70,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t docplatform-app:ci .
-      - uses: aquasecurity/trivy-action@v0.34.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: docplatform-app:ci
+          version: v0.71.2
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
