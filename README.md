@@ -228,3 +228,10 @@ curl -b jar -H "X-CSRF-Token: <token>" -F file=@handbuch.pdf -F title=Handbuch l
 Das Styling liegt in `app/static/css/base.css` sowie den seitenspezifischen CSS-Dateien unter `app/static/css/`.
 Die Farbpalette im Conrady-Blau und der automatische Dark Mode werden über die CSS-Variablen am Anfang von
 `base.css` gesteuert. Seiten-Templates: `app/templates/`. Der Seitenname kommt aus `APP_NAME` in der `.env`.
+
+## Abhängigkeiten, Lock-Dateien und CI
+
+- `requirements.txt`/`requirements-dev.txt` enthalten die Versionsbereiche, `requirements.lock`/`requirements-dev.lock` die exakten Versionen **mit Hashes**. Das Docker-Image installiert aus den Lock-Dateien (`pip install --require-hashes`).
+- Lock-Dateien neu erzeugen (z. B. nach Dependabot-PR oder Änderung der `.txt`-Dateien):
+  `uv pip compile requirements.txt --generate-hashes --python-version 3.12 --python-platform linux -o requirements.lock` (entsprechend für `requirements-dev.txt`).
+- `.github/workflows/ci.yml`: Tests (SQLite und PostgreSQL), Lock-Aktualität, `pip-audit`, Bandit, Secret-Scan (`.secrets.baseline`), Image-Build und Trivy. `.github/dependabot.yml` hält pip, Docker und Actions aktuell.
