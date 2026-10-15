@@ -1,3 +1,8 @@
+x-app-build: &app-build
+  context: .
+  args:
+    INSTALL_DEV: ${INSTALL_DEV:-false}
+
 services:
   db:
     image: postgres:16-alpine
@@ -6,8 +11,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB fehlt in .env}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER fehlt in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt in .env}
+      # Laufzeit-Rolle ohne Superuser-Rechte (siehe docker/postgres/01-app-role.sh). Leer = nicht anlegen.
+      APP_DB_USER: ${APP_DB_USER:-}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/01-app-role.sh:/docker-entrypoint-initdb.d/01-app-role.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -15,19 +24,37 @@ services:
       retries: 10
     # Datenbank ist bewusst NICHT nach außen veröffentlicht
 
-  app:
-    build:
-      context: .
-      args:
-        INSTALL_DEV: ${INSTALL_DEV:-false}
-    restart: unless-stopped
+  # Einmalig pro Start: Datenbank-Schema migrieren. Nur dieser Service kennt die Zugangsdaten des Besitzers (Superuser).
+  migrate:
+    build: *app-build
+    image: docplatform-app
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
     env_file: .env
+    entrypoint: ["alembic", "upgrade", "head"]
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+
+  app:
+    build: *app-build
+    image: docplatform-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      # Laufzeit-Rolle, falls APP_DB_USER/APP_DB_PASSWORD gesetzt sind (beide oder keines!); sonst wie bisher der Besitzer
+      DATABASE_URL: postgresql+psycopg://${APP_DB_USER:-${POSTGRES_USER}}:${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@db:5432/${POSTGRES_DB}
       STORAGE_DIR: /app/storage
+      RUN_MIGRATIONS: "false"  # übernimmt der Service "migrate"
+      # Besitzer-Zugangsdaten aus .env (env_file) NICHT in die Umgebung der App durchreichen
+      POSTGRES_USER: ""
+      POSTGRES_PASSWORD: ""
     ports:
       # Standardmäßig nur lokal (Reverse Proxy auf demselben Host). Direktzugriff von außen: APP_BIND=0.0.0.0
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8000}:8000"

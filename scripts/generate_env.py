@@ -30,6 +30,7 @@ def generate_values(admin_username: str) -> dict[str, str]:
     return {
         "SECRET_KEY": secrets.token_urlsafe(48),
         "POSTGRES_PASSWORD": secrets.token_hex(24),  # nur [0-9a-f]: URL-sicher
+        "APP_DB_PASSWORD": secrets.token_hex(24),  # Laufzeit-Rolle der App, ebenfalls URL-sicher
         "ADMIN_USERNAME": admin_username,
         "ADMIN_PASSWORD": secrets.token_urlsafe(18),
     }

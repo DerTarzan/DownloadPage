@@ -9,10 +9,11 @@ WORKDIR /app
 
 RUN groupadd --system app && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app
 
-COPY requirements.txt requirements-dev.txt ./
+COPY requirements.txt requirements.lock requirements-dev.txt requirements-dev.lock ./
 ARG INSTALL_DEV=false
-RUN pip install -r requirements.txt && \
-    if [ "$INSTALL_DEV" = "true" ]; then pip install -r requirements-dev.txt; fi
+# Installation aus der Lock-Datei: exakte Versionen, Hashes werden geprüft (Neu-Erzeugung: siehe README)
+RUN pip install --require-hashes -r requirements.lock && \
+    if [ "$INSTALL_DEV" = "true" ]; then pip install --require-hashes -r requirements-dev.lock; fi
 
 COPY . .
 # Storage gehört dem App-User; ein benanntes Volume übernimmt diese Rechte beim ersten Anlegen

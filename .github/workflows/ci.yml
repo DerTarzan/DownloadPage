@@ -1,0 +1,78 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install --require-hashes -r requirements-dev.lock
+      - run: pytest -q
+
+  test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:ci-only-password@localhost:5432/test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+      - run: pip install --require-hashes -r requirements-dev.lock
+      - run: pytest -q   # inkl. Rechte-Tests der Laufzeit-Rolle (benötigt psql)
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Lock-Dateien sind aktuell
+        run: |
+          pip install uv
+          uv pip compile requirements.txt --generate-hashes --python-version 3.12 --python-platform linux -o requirements.lock -q
+          uv pip compile requirements-dev.txt --generate-hashes --python-version 3.12 --python-platform linux -o requirements-dev.lock -q
+          git diff --exit-code -- requirements.lock requirements-dev.lock
+      - name: Abhängigkeiten auf bekannte Schwachstellen prüfen
+        run: |
+          pip install pip-audit bandit detect-secrets
+          pip-audit --require-hashes -r requirements.lock
+      - name: Statische Analyse (Bandit)
+        run: bandit -r app scripts -q -ll
+      - name: Geheimnisse im Repository
+        run: |
+          git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t docplatform-app:ci .
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: docplatform-app:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

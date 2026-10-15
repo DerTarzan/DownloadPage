@@ -33,9 +33,31 @@ der Admin-Login funktioniert dann nur über HTTPS (lokal stattdessen das Profil 
 Im Admin-Dashboard können Kategorie- und Produktbilder beim Anlegen hochgeladen sowie später ersetzt oder entfernt werden.
 Erlaubte Bildformate sind PNG, JPEG und WebP; die maximale Dateigröße wird über `MAX_IMAGE_SIZE_MB` festgelegt.
 
-Beim Start läuft `docker-entrypoint.sh`: `alembic upgrade head` → `python -m app.cli seed-admin` → Server.
+Beim Start migriert zuerst der einmalige Service `migrate` (`alembic upgrade head`, mit den Zugangsdaten des
+Datenbank-Besitzers). Danach läuft in der App `docker-entrypoint.sh`: `python -m app.cli seed-admin` → Server.
 Daten liegen in den Volumes `postgres_data` (DB) und `document_storage` (Bilder/PDFs) und überleben `docker compose down`
 (nur `down -v` löscht sie).
+
+### Datenbank-Rolle der App (Least Privilege)
+
+Die App verbindet sich nicht als Superuser, sondern als Rolle `APP_DB_USER` (nur `SELECT/INSERT/UPDATE/DELETE` auf die
+Tabellen, kein DDL, kein `CREATE ROLE`). Angelegt wird sie beim ersten Start eines neuen DB-Volumes durch
+`docker/postgres/01-app-role.sh`; `generate_env.py` erzeugt `APP_DB_PASSWORD` zufällig. Die Superuser-Zugangsdaten
+(`POSTGRES_USER`/`POSTGRES_PASSWORD`) kennt nur der Service `migrate`, sie werden nicht in die Umgebung der App durchgereicht.
+
+**Bestehende Installation auf die Laufzeit-Rolle umstellen** (die Init-Skripte laufen nur bei einem neuen Volume):
+
+```bash
+# 1. in der .env ergänzen:  APP_DB_USER=docplatform_app   APP_DB_PASSWORD=<zufälliger Wert, nur a-z0-9>
+# 2. db neu erstellen (Daten bleiben im Volume) und die Rolle anlegen (idempotent):
+docker compose up -d db
+docker compose exec db sh /docker-entrypoint-initdb.d/01-app-role.sh
+# 3. Migration und App neu starten:
+docker compose up -d --build
+```
+
+Ohne `APP_DB_USER`/`APP_DB_PASSWORD` in der `.env` ändert sich nichts: die App nutzt dann wie bisher den Besitzer.
+Beide Werte setzen oder beide weglassen. Wird nur einer gesetzt, schlägt die Anmeldung an der Datenbank fehl.
 
 ## Ersten Admin anlegen
 
@@ -206,3 +228,10 @@ curl -b jar -H "X-CSRF-Token: <token>" -F file=@handbuch.pdf -F title=Handbuch l
 Das Styling liegt in `app/static/css/base.css` sowie den seitenspezifischen CSS-Dateien unter `app/static/css/`.
 Die Farbpalette im Conrady-Blau und der automatische Dark Mode werden über die CSS-Variablen am Anfang von
 `base.css` gesteuert. Seiten-Templates: `app/templates/`. Der Seitenname kommt aus `APP_NAME` in der `.env`.
+
+## Abhängigkeiten, Lock-Dateien und CI
+
+- `requirements.txt`/`requirements-dev.txt` enthalten die Versionsbereiche, `requirements.lock`/`requirements-dev.lock` die exakten Versionen **mit Hashes**. Das Docker-Image installiert aus den Lock-Dateien (`pip install --require-hashes`).
+- Lock-Dateien neu erzeugen (z. B. nach Dependabot-PR oder Änderung der `.txt`-Dateien):
+  `uv pip compile requirements.txt --generate-hashes --python-version 3.12 --python-platform linux -o requirements.lock` (entsprechend für `requirements-dev.txt`).
+- `.github/workflows/ci.yml`: Tests (SQLite und PostgreSQL), Lock-Aktualität, `pip-audit`, Bandit, Secret-Scan (`.secrets.baseline`), Image-Build und Trivy. `.github/dependabot.yml` hält pip, Docker und Actions aktuell.
