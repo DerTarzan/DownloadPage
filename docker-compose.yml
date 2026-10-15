@@ -61,9 +61,11 @@ services:
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8000}:8000"
     volumes:
       - document_storage:/app/storage
+    # Reserve a different address so Docker cannot assign Caddy's trusted proxy IP to the app.
     networks:
-      - default
-      - proxy
+      default: {}
+      proxy:
+        ipv4_address: ${APP_PROXY_IP:-172.30.0.3}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 15s

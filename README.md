@@ -211,8 +211,9 @@ curl -b jar -H "X-CSRF-Token: <token>" -F file=@handbuch.pdf -F title=Handbuch l
 
 ## Betriebshinweise
 
-* Caddy bekommt eine feste interne IP (`PROXY_IP`) und nur diese IP wird für Forwarded-Header vertraut. Bei einem Konflikt
-  mit einem vorhandenen Docker-Subnetz `PROXY_SUBNET` und `PROXY_IP` gemeinsam ändern. **Niemals `FORWARDED_ALLOW_IPS=*` setzen.**
+* Caddy bekommt die feste interne IP `PROXY_IP`; die App reserviert davon getrennt `APP_PROXY_IP`, damit Docker die
+  vertrauenswürdige Proxy-IP nicht versehentlich der App zuweist. Bei einem Konflikt mit einem vorhandenen Docker-Subnetz
+  `PROXY_SUBNET`, `PROXY_IP` und `APP_PROXY_IP` passend ändern. **Niemals `FORWARDED_ALLOW_IPS=*` setzen.**
   Der Port der App sollte nicht direkt öffentlich erreichbar sein (`APP_BIND=127.0.0.1`, Standard).
 * Der Proxy sollte zusätzlich eigene Limits setzen (z. B. Nginx `client_max_body_size`, `limit_req` für `/auth/login`). Die App
   begrenzt Request-Bodys selbst (`MAX_PDF_SIZE_MB`, `MAX_IMAGE_SIZE_MB`, `MAX_REQUEST_BODY_KB`) und weist schreibende
