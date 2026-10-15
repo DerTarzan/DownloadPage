@@ -52,6 +52,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${APP_DB_USER:-${POSTGRES_USER}}:${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@db:5432/${POSTGRES_DB}
       STORAGE_DIR: /app/storage
       RUN_MIGRATIONS: "false"  # übernimmt der Service "migrate"
+      FORWARDED_ALLOW_IPS: ${PROXY_IP:-172.30.0.2}
       # Besitzer-Zugangsdaten aus .env (env_file) NICHT in die Umgebung der App durchreichen
       POSTGRES_USER: ""
       POSTGRES_PASSWORD: ""
@@ -60,6 +61,9 @@ services:
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-8000}:8000"
     volumes:
       - document_storage:/app/storage
+    networks:
+      - default
+      - proxy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 15s
@@ -67,6 +71,35 @@ services:
       retries: 5
       start_period: 20s
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      proxy:
+        ipv4_address: ${PROXY_IP:-172.30.0.2}
+
 volumes:
   postgres_data:
   document_storage:
+  caddy_data:
+  caddy_config:
+
+networks:
+  default: {}
+  proxy:
+    ipam:
+      config:
+        - subnet: ${PROXY_SUBNET:-172.30.0.0/24}

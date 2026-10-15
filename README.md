@@ -26,9 +26,11 @@ curl http://localhost:8000/health        # {"status":"ok"}
 | http://localhost:8000/admin/login | Admin-Login (Testseite) |
 | http://localhost:8000/docs | OpenAPI/Swagger (nur mit `DOCS_ENABLED=true`, im Produktionsprofil aus) |
 
-Der App-Port ist standardmäßig nur an `127.0.0.1` gebunden (`APP_BIND` in der `.env`). Für den Zugriff von außen gehört ein
-Reverse Proxy mit TLS davor; `APP_BIND=0.0.0.0` nur bewusst setzen. Das Produktionsprofil setzt `COOKIE_SECURE=true`,
-der Admin-Login funktioniert dann nur über HTTPS (lokal stattdessen das Profil `--local` verwenden).
+Caddy ist im Compose-Setup enthalten und leitet auf die App weiter. Für Produktion `DOMAIN` in der `.env` auf die echte
+Domain setzen und DNS auf den Server zeigen lassen; Caddy benötigt von außen erreichbare Ports 80 und 443 und verwaltet
+TLS-Zertifikate automatisch. Lokal setzt das Profil `--local` `DOMAIN=:80`; dann ist die Website über `http://localhost`
+erreichbar. Der App-Port bleibt standardmäßig zusätzlich nur an `127.0.0.1` gebunden (`APP_BIND`).
+Das Produktionsprofil setzt `COOKIE_SECURE=true`, der Admin-Login funktioniert dann nur über HTTPS.
 
 Im Admin-Dashboard können Kategorie- und Produktbilder beim Anlegen hochgeladen sowie später ersetzt oder entfernt werden.
 Erlaubte Bildformate sind PNG, JPEG und WebP; die maximale Dateigröße wird über `MAX_IMAGE_SIZE_MB` festgelegt.
@@ -209,9 +211,8 @@ curl -b jar -H "X-CSRF-Token: <token>" -F file=@handbuch.pdf -F title=Handbuch l
 
 ## Betriebshinweise
 
-* Hinter einem Reverse Proxy mit HTTPS: `COOKIE_SECURE=true` setzen und in der `.env` `FORWARDED_ALLOW_IPS=<IP des Proxys>`
-  eintragen (uvicorn liest die Variable selbst; **niemals `*`**). Nur dann sieht die Login-Bremse die echte Client-IP aus
-  `X-Forwarded-For`; ohne den Eintrag zählen alle Besucher als die Proxy-IP, und ein Angreifer könnte den Admin-Login sperren.
+* Caddy bekommt eine feste interne IP (`PROXY_IP`) und nur diese IP wird für Forwarded-Header vertraut. Bei einem Konflikt
+  mit einem vorhandenen Docker-Subnetz `PROXY_SUBNET` und `PROXY_IP` gemeinsam ändern. **Niemals `FORWARDED_ALLOW_IPS=*` setzen.**
   Der Port der App sollte nicht direkt öffentlich erreichbar sein (`APP_BIND=127.0.0.1`, Standard).
 * Der Proxy sollte zusätzlich eigene Limits setzen (z. B. Nginx `client_max_body_size`, `limit_req` für `/auth/login`). Die App
   begrenzt Request-Bodys selbst (`MAX_PDF_SIZE_MB`, `MAX_IMAGE_SIZE_MB`, `MAX_REQUEST_BODY_KB`) und weist schreibende
