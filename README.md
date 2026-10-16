@@ -23,7 +23,8 @@ curl http://localhost:8000/health        # {"status":"ok"}
 | URL | Zweck |
 |---|---|
 | http://localhost:8000/ | Startseite (Kategorien) |
-| http://localhost:8000/admin/login | Admin-Login (Testseite) |
+| http://localhost:8000/admin/login | Admin-Login |
+| http://localhost:8000/admin | Verwaltung: Übersicht · `/admin/catalog` Kategorien & Produkte · `/admin/documents` Dokumente · `/admin/upload` PDF hochladen · `/admin/settings` Einstellungen |
 | http://localhost:8000/docs | OpenAPI/Swagger (nur mit `DOCS_ENABLED=true`, im Produktionsprofil aus) |
 
 Compose enthält keinen Reverse Proxy und stellt die App standardmäßig nur lokal unter `http://localhost:8000` bereit
@@ -32,7 +33,7 @@ weiterleiten; DNS und TLS-Zertifikate werden außerhalb dieses Compose-Setups ko
 `COOKIE_SECURE=true`, der Admin-Login funktioniert dann nur über HTTPS. Lokal setzt das Profil `--local`
 `COOKIE_SECURE=false`.
 
-Im Admin-Dashboard können Kategorie- und Produktbilder beim Anlegen hochgeladen sowie später ersetzt oder entfernt werden.
+In der Verwaltung (Kategorien & Produkte) können Kategorie- und Produktbilder beim Anlegen hochgeladen sowie später ersetzt oder entfernt werden.
 Erlaubte Bildformate sind PNG, JPEG und WebP; die maximale Dateigröße wird über `MAX_IMAGE_SIZE_MB` festgelegt.
 
 Beim Start migriert zuerst der einmalige Service `migrate` (`alembic upgrade head`, mit den Zugangsdaten des
@@ -40,7 +41,7 @@ Datenbank-Besitzers). Danach läuft in der App `docker-entrypoint.sh`: `python -
 Daten liegen in den Volumes `postgres_data` (DB) und `document_storage` (Bilder/PDFs) und überleben `docker compose down`
 (nur `down -v` löscht sie).
 
-Kategorien können im Admin-Dashboard verschachtelt und zwischen Elternkategorien verschoben werden. Bestehende Kategorien
+Kategorien können in der Verwaltung verschachtelt und zwischen Elternkategorien verschoben werden. Bestehende Kategorien
 bleiben nach Migration `0002_category_parent` Hauptkategorien. Löschen ohne `cascade=true` wird abgewiesen, solange direkte
 Produkte oder Unterkategorien vorhanden sind; eine bestätigte Kaskade entfernt den gesamten Unterbaum mitsamt Produkten,
 Dokumenten und zugehörigen Dateien.

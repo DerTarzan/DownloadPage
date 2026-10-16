@@ -1,0 +1,35 @@
+{% extends "admin_base.html" %}
+{% block title %}Einstellungen – Verwaltung – {{ site_name }}{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+{% block page_lead %}Allgemeine Einstellungen der Website und Ihres Zugangs.{% endblock %}
+
+{% block content %}
+<form id="maint" class="section" aria-labelledby="h-maint">
+  <div class="section-head">
+    <h2 id="h-maint">Wartungsmodus</h2>
+    <p>Im Wartungsmodus sehen Besucher nur eine Hinweisseite. Die Verwaltung bleibt für Sie erreichbar.</p>
+  </div>
+  <div class="form-stack">
+    <div class="switch-row">
+      <label class="switch" for="mm"><input type="checkbox" id="mm" role="switch"><span>Website für Besucher sperren</span></label>
+      <span id="mm-state" class="badge">–</span>
+    </div>
+    <div class="field">
+      <label for="mmsg">Nachricht für Besucher</label>
+      <textarea id="mmsg" rows="3" maxlength="1000"></textarea>
+      <p class="hint">Wird auf der Wartungsseite angezeigt, zum Beispiel „Wir sind am Nachmittag wieder erreichbar.“</p>
+    </div>
+  </div>
+  <div class="section-actions"><button class="btn" id="maint-save">Einstellungen speichern</button></div>
+</form>
+
+<section class="section" aria-labelledby="h-account">
+  <div class="section-head">
+    <h2 id="h-account">Konto</h2>
+    <p>Sie sind als <b>{{ admin.username }}</b> angemeldet.</p>
+  </div>
+  <div class="section-actions"><button id="logout-2" class="btn btn-ghost" type="button">Abmelden</button></div>
+</section>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/admin_settings.js"></script>{% endblock %}

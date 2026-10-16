@@ -1,0 +1,82 @@
+{% extends "admin_base.html" %}
+{% block title %}Kategorien &amp; Produkte – Verwaltung – {{ site_name }}{% endblock %}
+{% block page_title %}Kategorien &amp; Produkte{% endblock %}
+{% block page_lead %}So ist Ihr Katalog aufgebaut. Klappen Sie eine Kategorie auf, um ihre Produkte und Dokumente zu verwalten.{% endblock %}
+{% block page_actions %}
+<button id="new-category" class="btn btn-ghost" type="button">Kategorie anlegen</button>
+<button id="new-product" class="btn" type="button">Produkt anlegen</button>
+{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="toolbar-search"><label class="sr-only" for="category-search">Kategorien und Produkte suchen</label><input id="category-search" type="search" autocomplete="off" placeholder="Kategorien und Produkte suchen"></div>
+  <div class="toolbar-buttons">
+    <button id="expand-all" class="btn btn-ghost btn-sm" type="button">Alle aufklappen</button>
+    <button id="collapse-all" class="btn btn-ghost btn-sm" type="button">Alle zuklappen</button>
+  </div>
+  <p id="category-search-status" class="toolbar-count" role="status" aria-live="polite"></p>
+</div>
+<div id="tree" class="tree" aria-busy="true"></div>
+<div id="category-search-empty" class="empty" hidden>Keine passenden Kategorien oder Produkte gefunden.</div>
+
+<dialog id="dlg-category" class="dialog" aria-labelledby="dlg-category-title">
+  <form id="category-form" novalidate>
+    <div class="dialog-head"><h2 id="dlg-category-title">Kategorie anlegen</h2><p id="dlg-category-lead">Kategorien gliedern Ihre Produkte. Sie können beliebig tief verschachtelt werden.</p></div>
+    <div class="dialog-body">
+      <div id="category-error" class="alert err" role="alert"></div>
+      <fieldset class="form-section">
+        <legend>Allgemein</legend>
+        <div class="form-stack">
+          <div class="field"><label for="cat-name">Name</label><input id="cat-name" required maxlength="120"></div>
+          <div class="field"><label for="cat-parent">Übergeordnete Kategorie</label><select id="cat-parent"></select><p class="hint">Leer lassen, um eine Hauptkategorie anzulegen.</p></div>
+          <div class="field"><label for="cat-desc">Beschreibung <span class="optional">(optional)</span></label><textarea id="cat-desc" rows="3"></textarea></div>
+          <div class="field" id="cat-sort-field"><label for="cat-sort">Sortierung</label><input id="cat-sort" type="number" min="0" max="1000000"><p class="hint">Kleinere Zahlen erscheinen weiter oben.</p></div>
+        </div>
+      </fieldset>
+      <fieldset class="form-section">
+        <legend>Bild</legend>
+        <div class="image-field">
+          <img id="cat-preview" class="image-preview" alt="Bildvorschau" hidden>
+          <div class="image-field-controls">
+            <label for="cat-image" id="cat-image-label">Bild auswählen <span class="optional">(PNG, JPEG oder WebP)</span></label>
+            <input id="cat-image" type="file" accept="image/png,image/jpeg,image/webp">
+            <label class="check" id="cat-remove-wrap" hidden><input type="checkbox" id="cat-image-remove"> Aktuelles Bild entfernen</label>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+    <div class="dialog-foot"><button class="btn btn-ghost" type="button" data-close>Abbrechen</button><button class="btn" id="category-save">Anlegen</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-product" class="dialog" aria-labelledby="dlg-product-title">
+  <form id="product-form" novalidate>
+    <div class="dialog-head"><h2 id="dlg-product-title">Produkt anlegen</h2><p id="dlg-product-lead">Dokumente laden Sie anschließend über „PDF hochladen“ hinzu.</p></div>
+    <div class="dialog-body">
+      <div id="product-error" class="alert err" role="alert"></div>
+      <fieldset class="form-section">
+        <legend>Allgemein</legend>
+        <div class="form-stack">
+          <div class="field"><label for="prod-name">Name</label><input id="prod-name" required maxlength="120"></div>
+          <div class="field"><label for="prod-category">Kategorie</label><select id="prod-category" required></select></div>
+          <div class="field"><label for="prod-desc">Beschreibung <span class="optional">(optional)</span></label><textarea id="prod-desc" rows="3"></textarea></div>
+        </div>
+      </fieldset>
+      <fieldset class="form-section">
+        <legend>Bild</legend>
+        <div class="image-field">
+          <img id="prod-preview" class="image-preview" alt="Bildvorschau" hidden>
+          <div class="image-field-controls">
+            <label for="prod-image" id="prod-image-label">Bild auswählen <span class="optional">(PNG, JPEG oder WebP)</span></label>
+            <input id="prod-image" type="file" accept="image/png,image/jpeg,image/webp">
+            <label class="check" id="prod-remove-wrap" hidden><input type="checkbox" id="prod-image-remove"> Aktuelles Bild entfernen</label>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+    <div class="dialog-foot"><button class="btn btn-ghost" type="button" data-close>Abbrechen</button><button class="btn" id="product-save">Anlegen</button></div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/admin_catalog.js"></script>{% endblock %}

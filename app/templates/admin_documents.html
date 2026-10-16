@@ -1,0 +1,42 @@
+{% extends "admin_base.html" %}
+{% block title %}Dokumente – Verwaltung – {{ site_name }}{% endblock %}
+{% block page_title %}Dokumente{% endblock %}
+{% block page_lead %}Alle hochgeladenen PDF-Dokumente. Bearbeiten, ein- und ausblenden oder löschen.{% endblock %}
+{% block page_actions %}<a class="btn" href="/admin/upload">PDF hochladen</a>{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="toolbar-search"><label class="sr-only" for="doc-search">Dokumente durchsuchen</label><input id="doc-search" type="search" autocomplete="off" placeholder="Titel, Dateiname oder Produkt suchen"></div>
+  <div class="toolbar-filter"><label class="sr-only" for="doc-status">Status</label>
+    <select id="doc-status"><option value="">Alle Status</option><option value="active">Nur aktive</option><option value="inactive">Nur inaktive</option></select></div>
+  <p id="doc-count" class="toolbar-count" role="status" aria-live="polite"></p>
+</div>
+
+<div class="table-wrap">
+  <table class="table" id="doc-table">
+    <thead><tr><th scope="col">Dokument</th><th scope="col">Produkt</th><th scope="col">Version</th><th scope="col">Größe</th><th scope="col">Status</th><th scope="col">Hochgeladen</th><th scope="col"><span class="sr-only">Aktionen</span></th></tr></thead>
+    <tbody id="doc-body"></tbody>
+  </table>
+</div>
+<div id="doc-empty" class="empty" hidden></div>
+
+<dialog id="dlg-doc" class="dialog" aria-labelledby="dlg-doc-title">
+  <form id="doc-form" novalidate>
+    <div class="dialog-head"><h2 id="dlg-doc-title">Dokument bearbeiten</h2><p>Die Datei selbst bleibt unverändert.</p></div>
+    <div class="dialog-body">
+      <div id="doc-error" class="alert err" role="alert"></div>
+      <div class="form-stack">
+        <div class="field"><label for="doc-title">Titel</label><input id="doc-title" required maxlength="200"></div>
+        <div class="form-grid">
+          <div class="field"><label for="doc-version">Version</label><input id="doc-version" required maxlength="32"></div>
+          <div class="field"><label for="doc-product">Produkt</label><select id="doc-product" required></select></div>
+        </div>
+        <div class="field"><label for="doc-desc">Beschreibung <span class="optional">(optional)</span></label><textarea id="doc-desc" rows="3"></textarea></div>
+      </div>
+    </div>
+    <div class="dialog-foot"><button class="btn btn-ghost" type="button" data-close>Abbrechen</button><button class="btn" id="doc-save">Speichern</button></div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/admin_documents.js"></script>{% endblock %}

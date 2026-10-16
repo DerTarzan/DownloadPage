@@ -1,47 +1,30 @@
-{% extends "base.html" %}
-{% block title %}Upload – {{ site_name }}{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/static/css/admin_upload.css">{% endblock %}
-{% block nav %}{% include "_admin_nav.html" %}{% endblock %}
+{% extends "admin_base.html" %}
+{% block title %}PDF hochladen – Verwaltung – {{ site_name }}{% endblock %}
+{% block page_title %}PDF hochladen{% endblock %}
+{% block page_lead %}Ein Dokument einem Produkt zuordnen. Es ist danach sofort auf der Website abrufbar.{% endblock %}
+{% block page_actions %}<a class="btn btn-ghost" href="/admin/documents">Zu den Dokumenten</a>{% endblock %}
+
 {% block content %}
-<div class="admin-head"><h1>Dokument hochladen</h1></div>
-<div class="panel upload-panel">
+<form id="f" class="section narrow" aria-label="Dokument hochladen">
   <div id="msg" class="alert" role="alert"></div>
-  <form id="f">
-    <div class="field"><label for="prod">Produkt</label><select name="product" id="prod" required></select></div>
-    <div class="field"><label for="t">Titel (optional)</label><input id="t" name="title" placeholder="z. B. Bedienungsanleitung"></div>
-    <div class="field"><label for="v">Version</label><input id="v" name="version" value="1.0"></div>
+  <fieldset class="form-section">
+    <legend>Zuordnung</legend>
+    <div class="field"><label for="prod">Produkt</label><select name="product" id="prod" required></select>
+      <p class="hint">Das Dokument erscheint auf der Seite dieses Produkts.</p></div>
+  </fieldset>
+  <fieldset class="form-section">
+    <legend>Angaben zum Dokument</legend>
+    <div class="form-grid">
+      <div class="field"><label for="t">Titel <span class="optional">(optional)</span></label><input id="t" name="title" placeholder="z. B. Bedienungsanleitung"><p class="hint">Ohne Titel wird der Dateiname verwendet.</p></div>
+      <div class="field"><label for="v">Version</label><input id="v" name="version" value="1.0" maxlength="32"></div>
+    </div>
+  </fieldset>
+  <fieldset class="form-section">
+    <legend>Datei</legend>
     <div class="field"><label for="file">PDF-Datei</label><input id="file" type="file" name="file" accept="application/pdf,.pdf" required></div>
-    <button class="btn">Hochladen</button> <a class="btn btn-ghost" href="/admin">Zurück</a>
-  </form>
-</div>
-{% include "_admin_js.html" %}
-<script>
-const msg = document.getElementById("msg");
-(async () => {
-  const [cats, prods] = await Promise.all([api("GET", "/api/admin/categories"), api("GET", "/api/admin/products")]);
-  const byId = new Map(cats.map(c => [c.id, c]));
-  const path = category => {
-    const parts = [], seen = new Set();
-    let current = category;
-    while (current) {
-      if (seen.has(current.id)) throw new Error("Zyklus in der Kategorienstruktur.");
-      seen.add(current.id); parts.push(current.name);
-      current = current.parent_id == null ? null : byId.get(current.parent_id);
-    }
-    return parts.reverse().join(" / ");
-  };
-  const sel = document.getElementById("prod");
-  prods.forEach(p => sel.append(el("option", `${path(byId.get(p.category_id))} / ${p.name}`, {value: p.id})));
-  if (!prods.length) { msg.className = "alert err"; msg.textContent = "Lege zuerst im Dashboard eine Kategorie und ein Produkt an."; }
-})();
-document.getElementById("f").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const f = e.target, b = f.querySelector("button"), fd = new FormData();
-  fd.append("file", f.file.files[0]); if (f.title.value) fd.append("title", f.title.value); fd.append("version", f.version.value || "1.0");
-  b.disabled = true;
-  try { const d = await api("POST", `/api/admin/products/${f.prod.value}/documents`, fd); msg.className = "alert ok"; msg.textContent = `Hochgeladen: ${d.title} (ID ${d.id})`; f.file.value = ""; f.title.value = ""; }
-  catch (err) { msg.className = "alert err"; msg.textContent = err.message; }
-  b.disabled = false;
-});
-</script>
+  </fieldset>
+  <div class="section-actions"><button class="btn" id="upload-btn">Hochladen</button><a class="btn btn-ghost" href="/admin/documents">Abbrechen</a></div>
+</form>
 {% endblock %}
+
+{% block scripts %}<script src="/static/js/admin_upload.js"></script>{% endblock %}
