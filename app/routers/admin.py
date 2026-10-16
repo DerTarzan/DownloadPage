@@ -1,4 +1,4 @@
-"""Admin: Einstellungen (Wartungsmodus) per API + minimale HTML-Testseiten."""
+"""Admin: Einstellungen (Wartungsmodus) per API + HTML-Seiten der Verwaltungsoberfläche."""
 import logging
 
 from fastapi import APIRouter, Depends, Request
@@ -32,7 +32,7 @@ def update_site_settings(data: SiteSettingsUpdate, svc: SettingServiceDep, admin
     return result
 
 
-# ---- HTML-Testseiten (nicht in der OpenAPI-Doku) ----
+# ---- HTML-Seiten der Verwaltung (nicht in der OpenAPI-Doku) ----
 pages_router = APIRouter(prefix="/admin", include_in_schema=False)
 
 
@@ -43,15 +43,33 @@ def login_page(request: Request, admin: OptionalAdminDep):
     return templates.TemplateResponse(request, "login.html", {})
 
 
-@pages_router.get("")
-def dashboard(request: Request, admin: OptionalAdminDep):
+def _admin_page(request: Request, admin, template: str, nav: str):
+    """Gemeinsame Auslieferung der Admin-Seiten; `nav` markiert den aktiven Menüpunkt."""
     if not admin:
         return RedirectResponse("/admin/login", status_code=303)
-    return templates.TemplateResponse(request, "admin_dashboard.html", {"admin": admin})
+    return templates.TemplateResponse(request, template, {"admin": admin, "nav": nav})
+
+
+@pages_router.get("")
+def dashboard(request: Request, admin: OptionalAdminDep):
+    return _admin_page(request, admin, "admin_dashboard.html", "overview")
+
+
+@pages_router.get("/catalog")
+def catalog_page(request: Request, admin: OptionalAdminDep):
+    return _admin_page(request, admin, "admin_catalog.html", "catalog")
+
+
+@pages_router.get("/documents")
+def documents_page(request: Request, admin: OptionalAdminDep):
+    return _admin_page(request, admin, "admin_documents.html", "documents")
 
 
 @pages_router.get("/upload")
 def upload_page(request: Request, admin: OptionalAdminDep):
-    if not admin:
-        return RedirectResponse("/admin/login", status_code=303)
-    return templates.TemplateResponse(request, "admin_upload.html", {"admin": admin})
+    return _admin_page(request, admin, "admin_upload.html", "upload")
+
+
+@pages_router.get("/settings")
+def settings_page(request: Request, admin: OptionalAdminDep):
+    return _admin_page(request, admin, "admin_settings.html", "settings")

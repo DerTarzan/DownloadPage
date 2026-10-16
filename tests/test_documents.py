@@ -145,13 +145,14 @@ def test_category_and_product_images(admin, anon, product, storage_root):
     assert list((storage_root / "images").iterdir()) == []
 
 
-def test_admin_dashboard_has_image_upload_controls(admin):
-    response = admin.get("/admin")
+def test_admin_catalog_page_has_image_upload_controls(admin):
+    response = admin.get("/admin/catalog")
     assert response.status_code == 200
     assert 'id="cat-image"' in response.text
     assert 'id="prod-image"' in response.text
-    assert "Bild hinzufügen" in response.text
-    assert "Bild ändern" in response.text
+    assert 'id="cat-image-remove"' in response.text and 'id="prod-image-remove"' in response.text
+    assert "Bild auswählen" in response.text and "Bild ersetzen" in admin.get("/static/js/admin.js").text
+
 
 
 def test_category_and_product_images_are_shown_in_public_pages(admin, anon, product):

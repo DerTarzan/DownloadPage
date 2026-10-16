@@ -313,20 +313,6 @@ h2 {
   text-align: center;
 }
 
-.admin-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.admin-head h1 {
-  margin: 0;
-  font-size: 1.9rem;
-}
-
 .muted-text {
   color: var(--muted);
 }
@@ -427,21 +413,6 @@ textarea:focus {
 
 .field {
   margin-bottom: 22px;
-}
-
-.row-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: end;
-  gap: 16px;
-}
-
-.row-form > * {
-  flex: 1 1 180px;
-}
-
-.row-form .btn {
-  flex: 0 0 auto;
 }
 
 .badge {
@@ -559,35 +530,6 @@ textarea:focus {
 
   .card-body {
     padding: 20px;
-  }
-
-  .admin-head {
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .admin-head > div {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .row-form {
-    align-items: stretch;
-  }
-
-  .row-form > * {
-    flex-basis: 100%;
-  }
-
-  .row-form .btn {
-    justify-content: center;
-  }
-
-  .row-form > .field,
-  .row-form > div {
-    min-width: 0;
   }
 
   .btn {

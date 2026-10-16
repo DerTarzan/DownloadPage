@@ -199,19 +199,17 @@ def test_inactive_ancestor_hides_nested_categories_products_and_downloads(admin,
     assert anon.get(f"/documents/{document['id']}/download").status_code == 404
 
 
-def test_admin_dashboard_contains_nested_category_and_product_editing(admin):
-    response = admin.get("/admin")
+def test_admin_catalog_page_contains_nested_category_and_product_editing(admin):
+    """Die Verwaltung von Unterkategorien, Produkten und die Suche liegen auf der Katalog-Seite (HTML + admin_catalog.js)."""
+    response = admin.get("/admin/catalog")
     assert response.status_code == 200
-    assert 'id="newcat-parent"' in response.text
-    assert 'id="category-search-toggle"' in response.text
+    assert 'id="cat-parent"' in response.text  # Elternkategorie wählen/verschieben
     assert 'id="category-search"' in response.text
-    assert 'aria-controls="category-search-panel"' in response.text
-    assert 'aria-expanded="false"' in response.text
-    assert "Keine passenden Kategorien gefunden." in response.text
-    assert "setCategoryOpen" in response.text
-    assert "updateCategoryFilter" in response.text
-    assert "row.dataset.productName = p.name" in response.text
-    assert "const productMatch = productRow.dataset.productName.toLocaleLowerCase(\"de\").includes(query)" in response.text
-    assert "productRow.hidden = Boolean(query && !categoryMatch && !productMatch)" in response.text
+    assert "Keine passenden Kategorien oder Produkte gefunden." in response.text
     assert "Übergeordnete Kategorie" in response.text
-    assert "category_id: Number(category.value)" in response.text
+    assert 'id="dlg-product"' in response.text and 'id="prod-category"' in response.text
+    js = admin.get("/static/js/admin_catalog.js").text
+    assert 'productsByCategory.get(c.id)' in js
+    assert 'p.name.toLocaleLowerCase("de").includes(q)' in js  # Produktsuche
+    assert "category_id" in js
+    assert "parent_id" in js
