@@ -16,7 +16,16 @@
   <div class="panel"><h2>Kategorie anlegen</h2><form id="newcat" class="row-form"><div><label for="cn">Name</label><input id="cn" name="name" required></div><div><label for="newcat-parent">Übergeordnete Kategorie (optional)</label><select id="newcat-parent" name="parent_id"></select></div><div><label for="cat-image">Bild (optional)</label><input id="cat-image" name="image" type="file" accept="image/png,image/jpeg,image/webp"></div><button class="btn">Anlegen</button></form></div>
   <div class="panel"><h2>Produkt anlegen</h2><form id="newprod" class="row-form"><div><label for="catsel">Kategorie</label><select name="category_id" id="catsel" required></select></div><div><label for="pn">Name</label><input id="pn" name="name" required></div><div><label for="prod-image">Bild (optional)</label><input id="prod-image" name="image" type="file" accept="image/png,image/jpeg,image/webp"></div><button class="btn">Anlegen</button></form></div>
 </div>
-<p><a class="btn btn-ghost" href="/admin/upload">PDF-Dokument hochladen</a></p>
+<div class="dashboard-tools">
+  <a class="btn btn-ghost dashboard-tool" href="/admin/upload">PDF-Dokument hochladen</a>
+  <button id="category-search-toggle" class="btn btn-ghost dashboard-tool" type="button" aria-expanded="false" aria-controls="category-search-panel">Kategorien suchen</button>
+</div>
+<div id="category-search-panel" class="category-search-panel" hidden>
+  <label for="category-search">Kategorien und Unterkategorien suchen</label>
+  <input id="category-search" type="search" autocomplete="off" placeholder="Kategoriename eingeben">
+  <p id="category-search-status" class="search-status" role="status" aria-live="polite"></p>
+</div>
+<div id="category-search-empty" class="empty category-search-empty" hidden>Keine passenden Kategorien gefunden.</div>
 <div id="tree"></div>
 
 {% include "_admin_js.html" %}
@@ -25,6 +34,7 @@ const msg = document.getElementById("msg");
 const run = async (fn) => { msg.textContent = ""; try { await fn(); await load(); } catch (e) { msg.textContent = e.message; } };
 const sure = (t) => confirm(t);
 let imageInputCount = 0;
+const categoryNodes = new Map();
 function categoryPath(category, byId) {
   const parts = [], seen = new Set();
   let current = category;
@@ -62,15 +72,17 @@ function fillParentOptions(select, childrenByParent, selectedId = null, excludeI
 }
 function makeCategoryEditor(c, childrenByParent) {
   const form = el("form", undefined, {className: "category-editor"});
-  const name = el("input", undefined, {value: c.name, required: true, maxLength: 120});
-  const parent = el("select");
+  const nameId = `category-name-${c.id}`, parentId = `category-parent-${c.id}`;
+  const descriptionId = `category-description-${c.id}`, orderId = `category-order-${c.id}`;
+  const name = el("input", undefined, {id: nameId, value: c.name, required: true, maxLength: 120});
+  const parent = el("select", undefined, {id: parentId});
   fillParentOptions(parent, childrenByParent, c.parent_id, c.id);
-  const description = el("textarea", undefined, {value: c.description || "", rows: 2});
-  const order = el("input", undefined, {type: "number", min: 0, max: 1000000, value: c.sort_order});
-  const nameField = el("div"); nameField.append(el("label", "Name"), name);
-  const parentField = el("div"); parentField.append(el("label", "Übergeordnete Kategorie"), parent);
-  const descriptionField = el("div"); descriptionField.append(el("label", "Beschreibung"), description);
-  const orderField = el("div"); orderField.append(el("label", "Sortierung"), order);
+  const description = el("textarea", undefined, {id: descriptionId, value: c.description || "", rows: 2});
+  const order = el("input", undefined, {id: orderId, type: "number", min: 0, max: 1000000, value: c.sort_order});
+  const nameField = el("div"); nameField.append(el("label", "Name", {htmlFor: nameId}), name);
+  const parentField = el("div"); parentField.append(el("label", "Übergeordnete Kategorie", {htmlFor: parentId}), parent);
+  const descriptionField = el("div"); descriptionField.append(el("label", "Beschreibung", {htmlFor: descriptionId}), description);
+  const orderField = el("div"); orderField.append(el("label", "Sortierung", {htmlFor: orderId}), order);
   form.append(nameField, parentField, descriptionField, orderField, btn("Kategorie speichern", "btn-ghost", () => form.requestSubmit()));
   form.addEventListener("submit", e => {
     e.preventDefault();
@@ -83,17 +95,19 @@ function makeCategoryEditor(c, childrenByParent) {
 }
 function makeProductEditor(p, categories, byId) {
   const form = el("form", undefined, {className: "category-editor"});
-  const name = el("input", undefined, {value: p.name, required: true, maxLength: 120});
-  const category = el("select");
+  const nameId = `product-name-${p.id}`, categoryId = `product-category-${p.id}`;
+  const descriptionId = `product-description-${p.id}`;
+  const name = el("input", undefined, {id: nameId, value: p.name, required: true, maxLength: 120});
+  const category = el("select", undefined, {id: categoryId});
   categories.forEach(item => {
     const option = el("option", categoryPath(item, byId), {value: item.id});
     option.selected = item.id === p.category_id;
     category.append(option);
   });
-  const description = el("textarea", undefined, {value: p.description || "", rows: 2});
-  const nameField = el("div"); nameField.append(el("label", "Produktname"), name);
-  const categoryField = el("div"); categoryField.append(el("label", "Kategorie"), category);
-  const descriptionField = el("div"); descriptionField.append(el("label", "Beschreibung"), description);
+  const description = el("textarea", undefined, {id: descriptionId, value: p.description || "", rows: 2});
+  const nameField = el("div"); nameField.append(el("label", "Produktname", {htmlFor: nameId}), name);
+  const categoryField = el("div"); categoryField.append(el("label", "Kategorie", {htmlFor: categoryId}), category);
+  const descriptionField = el("div"); descriptionField.append(el("label", "Beschreibung", {htmlFor: descriptionId}), description);
   form.append(nameField, categoryField, descriptionField,
     btn("Produkt speichern", "btn-ghost", () => form.requestSubmit()));
   form.addEventListener("submit", e => {
@@ -121,16 +135,37 @@ async function load() {
   const sel = document.getElementById("catsel"); sel.replaceChildren();
   cats.forEach(c => sel.append(el("option", categoryPath(c, byId), {value: c.id})));
   const tree = document.getElementById("tree"); tree.replaceChildren();
+  categoryNodes.clear();
+  savedCategoryStates = null;
   if (!cats.length) tree.append(el("div", "Noch keine Kategorien angelegt.", {className: "empty"}));
   const appendCategory = (c, container) => {
     const panel = el("section", undefined, {className: "panel category-panel"});
+    panel.dataset.categoryId = c.id;
+    panel.dataset.parentId = c.parent_id == null ? "" : c.parent_id;
     const head = el("div", undefined, {className: "cat-head"});
     const heading = el("div", undefined);
     heading.append(el("h2", c.name), el("span", `/${c.slug}`, {className: "slug"}), ...(c.active ? [] : [badge("inaktiv", "off")]));
+    const panelId = `category-content-${c.id}`;
+    const toggle = btn("Verwalten", "btn-ghost btn-sm", () => setCategoryOpen(c.id, !panel.classList.contains("is-expanded")));
+    toggle.classList.add("category-toggle");
+    toggle.setAttribute("aria-label", `Verwaltung für ${c.name} ein- oder ausklappen`);
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", panelId);
     const actions = el("div", undefined, {className: "actions"});
     actions.append(btn(c.active ? "Deaktivieren" : "Aktivieren", "btn-ghost", () => run(() => api("PUT", `/api/admin/categories/${c.id}`, {active: !c.active}))),
       btn("Löschen", "btn-danger", () => sure("Kategorie, alle Unterkategorien, Produkte, Dokumente und Dateien löschen?") && run(() => api("DELETE", `/api/admin/categories/${c.id}?cascade=true`))));
-    head.append(heading, actions); panel.append(head);
+    head.append(heading, toggle, actions);
+    panel.append(head);
+    const content = el("div", undefined, {className: "category-content"});
+    content.id = panelId;
+    content.setAttribute("aria-hidden", "true");
+    content.inert = true;
+    const contentInner = el("div", undefined, {className: "category-content-inner"});
+    content.append(contentInner);
+    panel.append(content);
+    categoryNodes.set(c.id, {panel, toggle, content, category: c});
+    const management = el("div", undefined, {className: "category-management"});
+    management.append(actions);
     const categoryEditor = el("details", undefined, {className: "entity-editor"});
     categoryEditor.append(el("summary", "Kategorie bearbeiten"));
     categoryEditor.addEventListener("toggle", () => {
@@ -139,9 +174,10 @@ async function load() {
         categoryEditor.append(makeCategoryEditor(c, childrenByParent));
       }
     });
-    panel.append(categoryEditor, imageControls("Kategorie", c.image_url, c.name, `/api/admin/categories/${c.id}/image`));
+    management.append(categoryEditor, imageControls("Kategorie", c.image_url, c.name, `/api/admin/categories/${c.id}/image`));
+    contentInner.append(management);
     const list = productsByCategory.get(c.id) || [];
-    if (!list.length) panel.append(el("p", "Keine direkten Produkte.", {className: "slug"}));
+    if (!list.length) contentInner.append(el("p", "Keine direkten Produkte.", {className: "slug"}));
     list.forEach(p => {
       const row = el("div", undefined, {className: "prod"}), pr = el("div", undefined, {className: "prod-row"}), pa = el("div", undefined, {className: "actions"});
       pr.append(el("b", p.name), el("span", `/${c.slug}/${p.slug}`, {className: "slug"}), ...(p.active ? [] : [badge("inaktiv", "off")]));
@@ -165,15 +201,63 @@ async function load() {
           btn("Löschen", "btn-danger", () => sure("Dokument löschen?") && run(() => api("DELETE", `/api/admin/documents/${d.id}`))));
         dr.append(da); row.append(dr);
       });
-      panel.append(row);
+      contentInner.append(row);
     });
-    container.append(panel);
     const children = el("div", undefined, {className: "category-children"});
+    children.setAttribute("aria-label", `Unterkategorien von ${c.name}`);
     appendChildren(c.id, children);
-    if (children.childElementCount) container.append(children);
+    if (children.childElementCount) contentInner.append(children);
+    container.append(panel);
   };
   const appendChildren = (parentId, container) => (childrenByParent.get(parentId) || []).forEach(c => appendCategory(c, container));
   appendChildren(null, tree);
+  updateCategoryFilter();
+}
+function setCategoryOpen(categoryId, open) {
+  const node = categoryNodes.get(categoryId);
+  if (!node) return;
+  node.panel.classList.toggle("is-expanded", open);
+  node.toggle.setAttribute("aria-expanded", String(open));
+  node.content.setAttribute("aria-hidden", String(!open));
+  node.content.inert = !open;
+}
+let savedCategoryStates = null;
+function updateCategoryFilter() {
+  const search = document.getElementById("category-search");
+  const query = search.value.trim().toLocaleLowerCase("de");
+  const status = document.getElementById("category-search-status");
+  const emptyState = document.getElementById("category-search-empty");
+  if (query && !savedCategoryStates) {
+    savedCategoryStates = new Map([...categoryNodes].map(([id, node]) => [id, node.panel.classList.contains("is-expanded")]));
+  }
+  const filterCategory = categoryId => {
+    const node = categoryNodes.get(categoryId);
+    const ownMatch = !query || node.category.name.toLocaleLowerCase("de").includes(query);
+    const children = node.panel.querySelector(":scope > .category-content .category-children");
+    let matchingChild = false;
+    if (children) {
+      [...children.children].forEach(childPanel => {
+        const childId = Number(childPanel.dataset.categoryId);
+        matchingChild = filterCategory(childId) || matchingChild;
+      });
+    }
+    const isVisible = ownMatch || matchingChild;
+    node.panel.hidden = !isVisible;
+    if (query && matchingChild) setCategoryOpen(categoryId, true);
+    if (query && ownMatch) node.panel.classList.add("search-match");
+    else node.panel.classList.remove("search-match");
+    return isVisible;
+  };
+  const roots = [...document.getElementById("tree").children].filter(panel => panel.classList.contains("category-panel"));
+  let visibleRoots = 0;
+  roots.forEach(root => { if (filterCategory(Number(root.dataset.categoryId))) visibleRoots++; });
+  if (!query && savedCategoryStates) {
+    savedCategoryStates.forEach((open, id) => setCategoryOpen(id, open));
+    savedCategoryStates = null;
+  }
+  const resultCount = [...categoryNodes.values()].filter(node => !node.panel.hidden && (!query || node.category.name.toLocaleLowerCase("de").includes(query))).length;
+  status.textContent = query ? `${resultCount} Treffer` : "";
+  emptyState.hidden = !query || visibleRoots > 0;
 }
 function imageControls(label, imageUrl, name, endpoint) {
   const controls = el("div", undefined, {className: "image-controls"});
@@ -272,6 +356,21 @@ document.getElementById("newprod").addEventListener("submit", (e) => {
   });
 });
 document.getElementById("logout").addEventListener("click", async () => { await api("POST", "/auth/logout"); location.href = "/admin/login"; });
+const searchToggle = document.getElementById("category-search-toggle");
+const searchPanel = document.getElementById("category-search-panel");
+const categorySearch = document.getElementById("category-search");
+searchToggle.addEventListener("click", () => {
+  const expanded = searchToggle.getAttribute("aria-expanded") === "true";
+  searchToggle.setAttribute("aria-expanded", String(!expanded));
+  searchPanel.hidden = expanded;
+  if (expanded) {
+    categorySearch.value = "";
+    updateCategoryFilter();
+  } else {
+    categorySearch.focus();
+  }
+});
+categorySearch.addEventListener("input", updateCategoryFilter);
 run(async () => {});
 </script>
 {% endblock %}

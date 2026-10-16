@@ -203,5 +203,12 @@ def test_admin_dashboard_contains_nested_category_and_product_editing(admin):
     response = admin.get("/admin")
     assert response.status_code == 200
     assert 'id="newcat-parent"' in response.text
+    assert 'id="category-search-toggle"' in response.text
+    assert 'id="category-search"' in response.text
+    assert 'aria-controls="category-search-panel"' in response.text
+    assert 'aria-expanded="false"' in response.text
+    assert "Keine passenden Kategorien gefunden." in response.text
+    assert "setCategoryOpen" in response.text
+    assert "updateCategoryFilter" in response.text
     assert "Übergeordnete Kategorie" in response.text
     assert "category_id: Number(category.value)" in response.text

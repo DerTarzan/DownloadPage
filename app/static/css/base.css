@@ -398,7 +398,10 @@ input[type="text"],
 input[type="password"],
 input:not([type]),
 input[type="file"],
-select {
+input[type="number"],
+input[type="search"],
+select,
+textarea {
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
@@ -409,8 +412,14 @@ select {
   font: inherit;
 }
 
+textarea {
+  line-height: inherit;
+  resize: vertical;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--primary);
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);

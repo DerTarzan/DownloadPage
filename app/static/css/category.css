@@ -2,3 +2,28 @@
 .page-head h1 {
   margin-bottom: .5em;
 }
+
+@media (max-width: 780px) {
+  .grid.category-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(12px, 3vw, 20px);
+  }
+}
+
+@media (max-width: 520px) {
+  .grid.category-grid .card-body {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .grid.category-grid .card-body h2 {
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+  }
+
+  .grid.category-grid .more {
+    padding-top: 8px;
+    font-size: .85rem;
+  }
+}
