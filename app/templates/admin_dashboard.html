@@ -163,6 +163,7 @@ async function load() {
     const contentInner = el("div", undefined, {className: "category-content-inner"});
     content.append(contentInner);
     panel.append(content);
+    const list = productsByCategory.get(c.id) || [];
     categoryNodes.set(c.id, {panel, toggle, content, category: c});
     const management = el("div", undefined, {className: "category-management"});
     management.append(actions);
@@ -176,10 +177,10 @@ async function load() {
     });
     management.append(categoryEditor, imageControls("Kategorie", c.image_url, c.name, `/api/admin/categories/${c.id}/image`));
     contentInner.append(management);
-    const list = productsByCategory.get(c.id) || [];
     if (!list.length) contentInner.append(el("p", "Keine direkten Produkte.", {className: "slug"}));
     list.forEach(p => {
       const row = el("div", undefined, {className: "prod"}), pr = el("div", undefined, {className: "prod-row"}), pa = el("div", undefined, {className: "actions"});
+      row.dataset.productName = p.name;
       pr.append(el("b", p.name), el("span", `/${c.slug}/${p.slug}`, {className: "slug"}), ...(p.active ? [] : [badge("inaktiv", "off")]));
       pa.append(btn(p.active ? "Deaktivieren" : "Aktivieren", "btn-ghost", () => run(() => api("PUT", `/api/admin/products/${p.id}`, {active: !p.active}))),
         btn("Löschen", "btn-danger", () => sure("Produkt samt Dokumenten löschen?") && run(() => api("DELETE", `/api/admin/products/${p.id}?cascade=true`))));
@@ -227,13 +228,21 @@ function updateCategoryFilter() {
   const query = search.value.trim().toLocaleLowerCase("de");
   const status = document.getElementById("category-search-status");
   const emptyState = document.getElementById("category-search-empty");
+  let resultCount = 0;
   if (query && !savedCategoryStates) {
     savedCategoryStates = new Map([...categoryNodes].map(([id, node]) => [id, node.panel.classList.contains("is-expanded")]));
   }
   const filterCategory = categoryId => {
     const node = categoryNodes.get(categoryId);
-    const ownMatch = !query || node.category.name.toLocaleLowerCase("de").includes(query);
-    const children = node.panel.querySelector(":scope > .category-content .category-children");
+    const categoryMatch = node.category.name.toLocaleLowerCase("de").includes(query);
+    let matchingProducts = 0;
+    node.panel.querySelectorAll(":scope > .category-content > .category-content-inner > .prod").forEach(productRow => {
+      const productMatch = productRow.dataset.productName.toLocaleLowerCase("de").includes(query);
+      productRow.hidden = Boolean(query && !categoryMatch && !productMatch);
+      if (productMatch) matchingProducts++;
+    });
+    resultCount += Number(categoryMatch) + matchingProducts;
+    const children = node.panel.querySelector(":scope > .category-content > .category-content-inner > .category-children");
     let matchingChild = false;
     if (children) {
       [...children.children].forEach(childPanel => {
@@ -241,10 +250,11 @@ function updateCategoryFilter() {
         matchingChild = filterCategory(childId) || matchingChild;
       });
     }
-    const isVisible = ownMatch || matchingChild;
+    const productMatch = matchingProducts > 0;
+    const isVisible = !query || categoryMatch || productMatch || matchingChild;
     node.panel.hidden = !isVisible;
-    if (query && matchingChild) setCategoryOpen(categoryId, true);
-    if (query && ownMatch) node.panel.classList.add("search-match");
+    if (query && (productMatch || matchingChild)) setCategoryOpen(categoryId, true);
+    if (query && categoryMatch) node.panel.classList.add("search-match");
     else node.panel.classList.remove("search-match");
     return isVisible;
   };
@@ -255,7 +265,6 @@ function updateCategoryFilter() {
     savedCategoryStates.forEach((open, id) => setCategoryOpen(id, open));
     savedCategoryStates = null;
   }
-  const resultCount = [...categoryNodes.values()].filter(node => !node.panel.hidden && (!query || node.category.name.toLocaleLowerCase("de").includes(query))).length;
   status.textContent = query ? `${resultCount} Treffer` : "";
   emptyState.hidden = !query || visibleRoots > 0;
 }

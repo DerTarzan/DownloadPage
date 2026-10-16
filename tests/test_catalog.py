@@ -210,5 +210,8 @@ def test_admin_dashboard_contains_nested_category_and_product_editing(admin):
     assert "Keine passenden Kategorien gefunden." in response.text
     assert "setCategoryOpen" in response.text
     assert "updateCategoryFilter" in response.text
+    assert "row.dataset.productName = p.name" in response.text
+    assert "const productMatch = productRow.dataset.productName.toLocaleLowerCase(\"de\").includes(query)" in response.text
+    assert "productRow.hidden = Boolean(query && !categoryMatch && !productMatch)" in response.text
     assert "Übergeordnete Kategorie" in response.text
     assert "category_id: Number(category.value)" in response.text
