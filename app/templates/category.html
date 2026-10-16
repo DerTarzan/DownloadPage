@@ -2,8 +2,18 @@
 {% block title %}{{ category.name }} – {{ site_name }}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/static/css/category.css">{% endblock %}
 {% block content %}
-<nav class="crumbs" aria-label="Brotkrumen"><a href="/">Start</a><span>/</span><span aria-current="page">{{ category.name }}</span></nav>
+<nav class="crumbs" aria-label="Brotkrumen"><a href="/">Start</a>{% for parent in ancestors %}<span>/</span><a href="/{{ parent.slug }}">{{ parent.name }}</a>{% endfor %}<span>/</span><span aria-current="page">{{ category.name }}</span></nav>
 <div class="page-head"><h1>{{ category.name }}</h1>{% if category.description %}<p>{{ category.description }}</p>{% endif %}</div>
+{% if children %}
+<section class="grid" aria-label="Unterkategorien">
+  {% for child in children %}
+  <a class="card" href="/{{ child.slug }}">
+    <div class="card-media">{% if child.image_url %}<img src="{{ child.image_url }}" alt="" loading="lazy">{% else %}<span class="ph">{{ child.name[:1] }}</span>{% endif %}</div>
+    <div class="card-body"><h2>{{ child.name }}</h2>{% if child.description %}<p>{{ child.description }}</p>{% endif %}<span class="more">Kategorie öffnen &rarr;</span></div>
+  </a>
+  {% endfor %}
+</section>
+{% endif %}
 {% if products %}
 <div class="grid">
   {% for p in products %}
@@ -13,5 +23,5 @@
   </a>
   {% endfor %}
 </div>
-{% else %}<div class="empty"><h2>Keine Produkte</h2><p>In dieser Kategorie gibt es noch keine Produkte.</p></div>{% endif %}
+{% elif not children %}<div class="empty"><h2>Keine Inhalte</h2><p>In dieser Kategorie gibt es noch keine Unterkategorien oder Produkte.</p></div>{% endif %}
 {% endblock %}

@@ -57,6 +57,7 @@ class PublicCategoryList(BaseModel):
 
 class PublicCategoryDetail(BaseModel):
     category: PublicCategory
+    children: list[PublicCategory]
     products: list[PublicProduct]
 
 

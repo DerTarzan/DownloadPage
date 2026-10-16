@@ -13,7 +13,7 @@
     <div class="row-form"><div><label for="mmsg">Nachricht für Besucher</label><input id="mmsg"></div><button class="btn">Speichern</button></div></form></div>
 
 <div class="two dashboard-two">
-  <div class="panel"><h2>Kategorie anlegen</h2><form id="newcat" class="row-form"><div><label for="cn">Name</label><input id="cn" name="name" required></div><div><label for="cat-image">Bild (optional)</label><input id="cat-image" name="image" type="file" accept="image/png,image/jpeg,image/webp"></div><button class="btn">Anlegen</button></form></div>
+  <div class="panel"><h2>Kategorie anlegen</h2><form id="newcat" class="row-form"><div><label for="cn">Name</label><input id="cn" name="name" required></div><div><label for="newcat-parent">Übergeordnete Kategorie (optional)</label><select id="newcat-parent" name="parent_id"></select></div><div><label for="cat-image">Bild (optional)</label><input id="cat-image" name="image" type="file" accept="image/png,image/jpeg,image/webp"></div><button class="btn">Anlegen</button></form></div>
   <div class="panel"><h2>Produkt anlegen</h2><form id="newprod" class="row-form"><div><label for="catsel">Kategorie</label><select name="category_id" id="catsel" required></select></div><div><label for="pn">Name</label><input id="pn" name="name" required></div><div><label for="prod-image">Bild (optional)</label><input id="prod-image" name="image" type="file" accept="image/png,image/jpeg,image/webp"></div><button class="btn">Anlegen</button></form></div>
 </div>
 <p><a class="btn btn-ghost" href="/admin/upload">PDF-Dokument hochladen</a></p>
@@ -25,30 +25,140 @@ const msg = document.getElementById("msg");
 const run = async (fn) => { msg.textContent = ""; try { await fn(); await load(); } catch (e) { msg.textContent = e.message; } };
 const sure = (t) => confirm(t);
 let imageInputCount = 0;
+function categoryPath(category, byId) {
+  const parts = [], seen = new Set();
+  let current = category;
+  while (current) {
+    if (seen.has(current.id)) throw new Error("Zyklus in der Kategorienstruktur.");
+    seen.add(current.id);
+    parts.push(current.name);
+    current = current.parent_id == null ? null : byId.get(current.parent_id);
+  }
+  return parts.reverse().join(" / ");
+}
+function descendantIds(categoryId, childrenByParent) {
+  const descendants = new Set(), pending = [categoryId];
+  while (pending.length) {
+    const parentId = pending.pop();
+    (childrenByParent.get(parentId) || []).forEach(c => {
+      if (!descendants.has(c.id)) { descendants.add(c.id); pending.push(c.id); }
+    });
+  }
+  return descendants;
+}
+function fillParentOptions(select, childrenByParent, selectedId = null, excludeId = null) {
+  select.replaceChildren(el("option", "Keine (Hauptkategorie)", {value: ""}));
+  const excluded = excludeId == null ? new Set() : descendantIds(excludeId, childrenByParent).add(excludeId);
+  const appendChildren = (parentId, depth) => {
+    (childrenByParent.get(parentId) || []).filter(c => !excluded.has(c.id)).forEach(c => {
+      const option = el("option", `${"— ".repeat(depth)}${c.name}`, {value: c.id});
+      option.selected = c.id === selectedId;
+      select.append(option);
+      appendChildren(c.id, depth + 1);
+    });
+  };
+  appendChildren(null, 0);
+  if (selectedId == null) select.value = "";
+}
+function makeCategoryEditor(c, childrenByParent) {
+  const form = el("form", undefined, {className: "category-editor"});
+  const name = el("input", undefined, {value: c.name, required: true, maxLength: 120});
+  const parent = el("select");
+  fillParentOptions(parent, childrenByParent, c.parent_id, c.id);
+  const description = el("textarea", undefined, {value: c.description || "", rows: 2});
+  const order = el("input", undefined, {type: "number", min: 0, max: 1000000, value: c.sort_order});
+  const nameField = el("div"); nameField.append(el("label", "Name"), name);
+  const parentField = el("div"); parentField.append(el("label", "Übergeordnete Kategorie"), parent);
+  const descriptionField = el("div"); descriptionField.append(el("label", "Beschreibung"), description);
+  const orderField = el("div"); orderField.append(el("label", "Sortierung"), order);
+  form.append(nameField, parentField, descriptionField, orderField, btn("Kategorie speichern", "btn-ghost", () => form.requestSubmit()));
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    run(() => api("PUT", `/api/admin/categories/${c.id}`, {
+      name: name.value, parent_id: parent.value ? Number(parent.value) : null,
+      description: description.value || null, sort_order: Number(order.value)
+    }));
+  });
+  return form;
+}
+function makeProductEditor(p, categories, byId) {
+  const form = el("form", undefined, {className: "category-editor"});
+  const name = el("input", undefined, {value: p.name, required: true, maxLength: 120});
+  const category = el("select");
+  categories.forEach(item => {
+    const option = el("option", categoryPath(item, byId), {value: item.id});
+    option.selected = item.id === p.category_id;
+    category.append(option);
+  });
+  const description = el("textarea", undefined, {value: p.description || "", rows: 2});
+  const nameField = el("div"); nameField.append(el("label", "Produktname"), name);
+  const categoryField = el("div"); categoryField.append(el("label", "Kategorie"), category);
+  const descriptionField = el("div"); descriptionField.append(el("label", "Beschreibung"), description);
+  form.append(nameField, categoryField, descriptionField,
+    btn("Produkt speichern", "btn-ghost", () => form.requestSubmit()));
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    run(() => api("PUT", `/api/admin/products/${p.id}`, {
+      name: name.value, category_id: Number(category.value), description: description.value || null
+    }));
+  });
+  return form;
+}
 async function load() {
   const [cats, prods, docs, s] = await Promise.all([api("GET", "/api/admin/categories"), api("GET", "/api/admin/products"), api("GET", "/api/admin/documents"), api("GET", "/api/admin/settings")]);
   document.getElementById("s-c").textContent = cats.length; document.getElementById("s-p").textContent = prods.length; document.getElementById("s-d").textContent = docs.length;
   document.getElementById("mm").checked = s.maintenance_mode; document.getElementById("mmsg").value = s.maintenance_message;
-  const sel = document.getElementById("catsel"); sel.replaceChildren(); cats.forEach(c => sel.append(el("option", c.name, {value: c.id})));
+  const byId = new Map(cats.map(c => [c.id, c]));
+  const childrenByParent = new Map(), productsByCategory = new Map(), docsByProduct = new Map();
+  const group = (map, key, item) => {
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(item);
+  };
+  cats.forEach(c => group(childrenByParent, c.parent_id, c));
+  prods.forEach(p => group(productsByCategory, p.category_id, p));
+  docs.forEach(d => group(docsByProduct, d.product_id, d));
+  fillParentOptions(document.getElementById("newcat-parent"), childrenByParent);
+  const sel = document.getElementById("catsel"); sel.replaceChildren();
+  cats.forEach(c => sel.append(el("option", categoryPath(c, byId), {value: c.id})));
   const tree = document.getElementById("tree"); tree.replaceChildren();
   if (!cats.length) tree.append(el("div", "Noch keine Kategorien angelegt.", {className: "empty"}));
-  cats.forEach(c => {
-    const panel = el("div", undefined, {className: "panel"}), head = el("div", undefined, {className: "cat-head"}), actions = el("div", undefined, {className: "actions"});
-    head.append(el("h2", c.name), el("span", "/" + c.slug, {className: "slug"}), ...(c.active ? [] : [badge("inaktiv", "off")]));
+  const appendCategory = (c, container) => {
+    const panel = el("section", undefined, {className: "panel category-panel"});
+    const head = el("div", undefined, {className: "cat-head"});
+    const heading = el("div", undefined);
+    heading.append(el("h2", c.name), el("span", `/${c.slug}`, {className: "slug"}), ...(c.active ? [] : [badge("inaktiv", "off")]));
+    const actions = el("div", undefined, {className: "actions"});
     actions.append(btn(c.active ? "Deaktivieren" : "Aktivieren", "btn-ghost", () => run(() => api("PUT", `/api/admin/categories/${c.id}`, {active: !c.active}))),
-      btn("Löschen", "btn-danger", () => sure("Kategorie samt Produkten, Dokumenten und Dateien löschen?") && run(() => api("DELETE", `/api/admin/categories/${c.id}?cascade=true`))));
-    head.append(actions); panel.append(head);
-    panel.append(imageControls("Kategorie", c.image_url, c.name, `/api/admin/categories/${c.id}/image`));
-    const list = prods.filter(p => p.category_id === c.id);
-    if (!list.length) panel.append(el("p", "Keine Produkte.", {className: "slug"}));
+      btn("Löschen", "btn-danger", () => sure("Kategorie, alle Unterkategorien, Produkte, Dokumente und Dateien löschen?") && run(() => api("DELETE", `/api/admin/categories/${c.id}?cascade=true`))));
+    head.append(heading, actions); panel.append(head);
+    const categoryEditor = el("details", undefined, {className: "entity-editor"});
+    categoryEditor.append(el("summary", "Kategorie bearbeiten"));
+    categoryEditor.addEventListener("toggle", () => {
+      if (categoryEditor.open && !categoryEditor.dataset.loaded) {
+        categoryEditor.dataset.loaded = "true";
+        categoryEditor.append(makeCategoryEditor(c, childrenByParent));
+      }
+    });
+    panel.append(categoryEditor, imageControls("Kategorie", c.image_url, c.name, `/api/admin/categories/${c.id}/image`));
+    const list = productsByCategory.get(c.id) || [];
+    if (!list.length) panel.append(el("p", "Keine direkten Produkte.", {className: "slug"}));
     list.forEach(p => {
       const row = el("div", undefined, {className: "prod"}), pr = el("div", undefined, {className: "prod-row"}), pa = el("div", undefined, {className: "actions"});
       pr.append(el("b", p.name), el("span", `/${c.slug}/${p.slug}`, {className: "slug"}), ...(p.active ? [] : [badge("inaktiv", "off")]));
       pa.append(btn(p.active ? "Deaktivieren" : "Aktivieren", "btn-ghost", () => run(() => api("PUT", `/api/admin/products/${p.id}`, {active: !p.active}))),
         btn("Löschen", "btn-danger", () => sure("Produkt samt Dokumenten löschen?") && run(() => api("DELETE", `/api/admin/products/${p.id}?cascade=true`))));
       pr.append(pa); row.append(pr);
+      const productEditor = el("details", undefined, {className: "entity-editor"});
+      productEditor.append(el("summary", "Produkt bearbeiten"));
+      productEditor.addEventListener("toggle", () => {
+        if (productEditor.open && !productEditor.dataset.loaded) {
+          productEditor.dataset.loaded = "true";
+          productEditor.append(makeProductEditor(p, cats, byId));
+        }
+      });
+      row.append(productEditor);
       row.append(imageControls("Produkt", p.image_url, p.name, `/api/admin/products/${p.id}/image`));
-      docs.filter(d => d.product_id === p.id).forEach(d => {
+      (docsByProduct.get(p.id) || []).forEach(d => {
         const dr = el("div", undefined, {className: "doc-row"}), da = el("div", undefined, {className: "actions"});
         dr.append(el("span", `${d.title} · v${d.version}`), ...(d.active ? [] : [badge("inaktiv", "off")]));
         da.append(btn(d.active ? "Deaktivieren" : "Aktivieren", "btn-ghost", () => run(() => api("PUT", `/api/admin/documents/${d.id}`, {active: !d.active}))),
@@ -57,8 +167,13 @@ async function load() {
       });
       panel.append(row);
     });
-    tree.append(panel);
-  });
+    container.append(panel);
+    const children = el("div", undefined, {className: "category-children"});
+    appendChildren(c.id, children);
+    if (children.childElementCount) container.append(children);
+  };
+  const appendChildren = (parentId, container) => (childrenByParent.get(parentId) || []).forEach(c => appendCategory(c, container));
+  appendChildren(null, tree);
 }
 function imageControls(label, imageUrl, name, endpoint) {
   const controls = el("div", undefined, {className: "image-controls"});
@@ -118,7 +233,9 @@ document.getElementById("newcat").addEventListener("submit", (e) => {
   e.preventDefault();
   const f = e.target;
   run(async () => {
-    const category = await api("POST", "/api/admin/categories", {name: f.name.value});
+    const category = await api("POST", "/api/admin/categories", {
+      name: f.name.value, parent_id: f.parent_id.value ? Number(f.parent_id.value) : null
+    });
     if (f.image.files.length) {
       const image = new FormData();
       image.append("file", f.image.files[0]);

@@ -19,8 +19,19 @@
 const msg = document.getElementById("msg");
 (async () => {
   const [cats, prods] = await Promise.all([api("GET", "/api/admin/categories"), api("GET", "/api/admin/products")]);
-  const names = Object.fromEntries(cats.map(c => [c.id, c.name])), sel = document.getElementById("prod");
-  prods.forEach(p => sel.append(el("option", `${names[p.category_id]} / ${p.name}`, {value: p.id})));
+  const byId = new Map(cats.map(c => [c.id, c]));
+  const path = category => {
+    const parts = [], seen = new Set();
+    let current = category;
+    while (current) {
+      if (seen.has(current.id)) throw new Error("Zyklus in der Kategorienstruktur.");
+      seen.add(current.id); parts.push(current.name);
+      current = current.parent_id == null ? null : byId.get(current.parent_id);
+    }
+    return parts.reverse().join(" / ");
+  };
+  const sel = document.getElementById("prod");
+  prods.forEach(p => sel.append(el("option", `${path(byId.get(p.category_id))} / ${p.name}`, {value: p.id})));
   if (!prods.length) { msg.className = "alert err"; msg.textContent = "Lege zuerst im Dashboard eine Kategorie und ein Produkt an."; }
 })();
 document.getElementById("f").addEventListener("submit", async (e) => {

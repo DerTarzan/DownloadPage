@@ -40,7 +40,7 @@ class ProductService:
 
     def get_public(self, category_slug: str, product_slug: str) -> tuple[Category, Product]:
         found = self.repo.get_public(category_slug, product_slug)
-        if found is None:
+        if found is None or not all(item.active for item in self.categories.path(found[0])):
             raise NotFoundError("Produkt nicht gefunden")
         return found
 

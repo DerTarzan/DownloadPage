@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, UnprocessableError
 from app.models.document import Document
+from app.repositories.category_repository import CategoryRepository
 from app.repositories.document_repository import DocumentRepository
 from app.repositories.product_repository import ProductRepository
 from app.schemas.document import DocumentUpdate
@@ -22,6 +23,7 @@ class DocumentService:
         self.files = files
         self.repo = DocumentRepository(db)
         self.products = ProductRepository(db)
+        self.categories = CategoryRepository(db)
 
     # --- Lesen ---
     def list_admin(self, product_id: int | None = None, active: bool | None = None) -> list[Document]:
@@ -44,6 +46,8 @@ class DocumentService:
         if found is None:
             raise NotFoundError("Dokument nicht gefunden")
         document, product, category = found
+        if not all(item.active for item in self.categories.path(category)):
+            raise NotFoundError("Dokument nicht gefunden")
         if (category_slug and category.slug != category_slug) or (product_slug and product.slug != product_slug):
             raise NotFoundError("Dokument nicht gefunden")
         try:

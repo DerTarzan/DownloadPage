@@ -81,10 +81,15 @@ def download_document_nested(category_slug: str, product_slug: str, document_id:
 )
 def category_detail(request: Request, category_slug: str, categories: CategoryServiceDep, products: ProductServiceDep):
     category = categories.get_public_by_slug(category_slug)
+    children = categories.list_public_children(category)
     items = products.list_public(category)
     if wants_html(request):
-        return templates.TemplateResponse(request, "category.html", {"category": category, "products": items})
-    return {"category": category, "products": items}
+        return templates.TemplateResponse(
+            request,
+            "category.html",
+            {"category": category, "ancestors": categories.path(category)[:-1], "children": children, "products": items},
+        )
+    return {"category": category, "children": children, "products": items}
 
 
 @router.get(
@@ -94,12 +99,19 @@ def category_detail(request: Request, category_slug: str, categories: CategorySe
     responses={**ERR_404, **MAINTENANCE_RESPONSE},
 )
 def product_detail(
-    request: Request, category_slug: str, product_slug: str, products: ProductServiceDep, documents: DocumentServiceDep
+    request: Request,
+    category_slug: str,
+    product_slug: str,
+    categories: CategoryServiceDep,
+    products: ProductServiceDep,
+    documents: DocumentServiceDep,
 ):
     category, product = products.get_public(category_slug, product_slug)
     docs = documents.list_public(product.id)
     if wants_html(request):
         return templates.TemplateResponse(
-            request, "product.html", {"category": category, "product": product, "documents": docs}
+            request,
+            "product.html",
+            {"category": category, "ancestors": categories.path(category)[:-1], "product": product, "documents": docs},
         )
     return {"category": category, "product": product, "documents": docs}

@@ -53,6 +53,8 @@ def _migrated_database():
 def _clean_state():
     with engine.begin() as conn:
         for table in reversed(Base.metadata.sorted_tables):
+            if table.name == "categories":
+                conn.execute(table.update().values(parent_id=None))
             conn.execute(table.delete())
     storage = get_file_service().root
     for sub in ("images", "documents"):

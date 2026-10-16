@@ -2,7 +2,7 @@
 {% block title %}{{ product.name }} – {{ site_name }}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/static/css/product.css">{% endblock %}
 {% block content %}
-<nav class="crumbs" aria-label="Brotkrumen"><a href="/">Start</a><span>/</span><a href="/{{ category.slug }}">{{ category.name }}</a><span>/</span><span aria-current="page">{{ product.name }}</span></nav>
+<nav class="crumbs" aria-label="Brotkrumen"><a href="/">Start</a>{% for parent in ancestors %}<span>/</span><a href="/{{ parent.slug }}">{{ parent.name }}</a>{% endfor %}<span>/</span><a href="/{{ category.slug }}">{{ category.name }}</a><span>/</span><span aria-current="page">{{ product.name }}</span></nav>
 <section class="product">
   <div class="product-media">{% if product.image_url %}<img src="{{ product.image_url }}" alt="{{ product.name }}">{% else %}<span class="ph">{{ product.name[:1] }}</span>{% endif %}</div>
   <div><h1>{{ product.name }}</h1>{% if product.description %}<p class="prose">{{ product.description }}</p>{% endif %}</div>
