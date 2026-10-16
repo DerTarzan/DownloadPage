@@ -34,6 +34,41 @@
   box-shadow: var(--shadow);
 }
 
+.category-children {
+  margin-left: clamp(12px, 3vw, 34px);
+  padding-left: clamp(12px, 3vw, 24px);
+  border-left: 2px solid var(--line);
+}
+
+.entity-editor {
+  margin: 12px 0;
+}
+
+.entity-editor summary {
+  width: fit-content;
+  color: var(--primary);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.category-editor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  align-items: end;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.category-editor label {
+  margin-bottom: 6px;
+}
+
+.category-editor textarea {
+  width: 100%;
+  min-height: 42px;
+  resize: vertical;
+}
+
 .panel > h2 {
   margin-bottom: 22px;
 }

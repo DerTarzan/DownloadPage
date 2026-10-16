@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class CategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
+    parent_id: int | None = Field(default=None, ge=1)
     slug: str | None = Field(default=None, max_length=100, description="Optional; sonst automatisch aus dem Namen")
     description: str | None = None
     sort_order: int | None = Field(default=None, ge=0, le=1_000_000)
@@ -13,6 +14,7 @@ class CategoryCreate(BaseModel):
 
 class CategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
+    parent_id: int | None = Field(default=None, ge=1)
     slug: str | None = Field(default=None, max_length=100)
     description: str | None = None
     sort_order: int | None = Field(default=None, ge=0, le=1_000_000)
@@ -22,6 +24,7 @@ class CategoryUpdate(BaseModel):
 class CategoryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    parent_id: int | None
     name: str
     slug: str
     description: str | None
@@ -34,6 +37,8 @@ class CategoryOut(BaseModel):
 
 class PublicCategory(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+    id: int
+    parent_id: int | None
     name: str
     slug: str
     description: str | None

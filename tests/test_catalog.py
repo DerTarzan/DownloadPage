@@ -122,3 +122,86 @@ def test_delete_empty_category_and_product(admin):
 
 def test_id_out_of_range_is_not_a_server_error(admin):
     assert admin.get("/api/admin/categories/99999999999999").status_code == 422
+
+
+def test_nested_categories_support_direct_products_and_document_downloads(admin, anon):
+    root = make_category(admin, "Rollstühle")
+    middle = make_category(admin, "Elektrorollstühle", parent_id=root["id"])
+    leaf = make_category(admin, "Reiserollstühle", parent_id=middle["id"])
+    root_product = make_product(admin, root["id"], "Direktprodukt")
+    leaf_product = make_product(admin, leaf["id"], "Modell X")
+    document = upload_pdf(admin, leaf_product["id"], title="Anleitung").json()
+
+    assert root["parent_id"] is None
+    assert middle["parent_id"] == root["id"]
+    assert leaf["parent_id"] == middle["id"]
+    assert [item["slug"] for item in anon.get("/").json()["categories"]] == ["rollstuehle"]
+    root_detail = anon.get("/rollstuehle").json()
+    assert [item["slug"] for item in root_detail["children"]] == ["elektrorollstuehle"]
+    assert [item["slug"] for item in root_detail["products"]] == ["direktprodukt"]
+    middle_detail = anon.get("/elektrorollstuehle").json()
+    assert [item["slug"] for item in middle_detail["children"]] == ["reiserollstuehle"]
+    assert anon.get("/reiserollstuehle").json()["products"][0]["slug"] == "modell-x"
+
+    headers = {"accept": "text/html"}
+    leaf_page = anon.get("/reiserollstuehle", headers=headers)
+    assert all(part in leaf_page.text for part in ("Rollstühle", "Elektrorollstühle", "Modell X"))
+    product_page = anon.get("/reiserollstuehle/modell-x", headers=headers)
+    assert all(part in product_page.text for part in ("Rollstühle", "Elektrorollstühle", "Reiserollstühle"))
+    downloaded = anon.get(f"/reiserollstuehle/modell-x/dokument/{document['id']}/download")
+    assert downloaded.status_code == 200 and downloaded.content.startswith(b"%PDF-")
+    assert root_product["category_id"] == root["id"]
+
+
+def test_empty_nested_category_has_an_empty_state(admin, anon):
+    root = make_category(admin, "Badartikel")
+    child = make_category(admin, "Toilettenstühle", parent_id=root["id"])
+    assert anon.get(f"/{child['slug']}").status_code == 200
+    response = anon.get(f"/{child['slug']}", headers={"accept": "text/html"})
+    assert "Keine Inhalte" in response.text
+
+
+def test_category_move_rejects_self_and_descendant_cycles(admin):
+    root = make_category(admin, "Lifter")
+    child = make_category(admin, "Patientenlifter", parent_id=root["id"])
+    grandchild = make_category(admin, "Foldy", parent_id=child["id"])
+
+    assert admin.put(f"/api/admin/categories/{root['id']}", json={"parent_id": root["id"]}).status_code == 422
+    assert admin.put(f"/api/admin/categories/{root['id']}", json={"parent_id": grandchild["id"]}).status_code == 422
+    assert admin.post("/api/admin/categories", json={"name": "Unbekannt", "parent_id": 9999}).status_code == 422
+
+    moved = admin.put(f"/api/admin/categories/{grandchild['id']}", json={"parent_id": None})
+    assert moved.status_code == 200 and moved.json()["parent_id"] is None
+
+
+def test_deleting_category_with_descendants_requires_explicit_cascade(admin, storage_root):
+    root = make_category(admin, "Badartikel")
+    child = make_category(admin, "Badewannenlifter", parent_id=root["id"])
+    leaf = make_category(admin, "Bellavita", parent_id=child["id"])
+    product = make_product(admin, leaf["id"], "Bellavita")
+    document = upload_pdf(admin, product["id"]).json()
+
+    assert admin.delete(f"/api/admin/categories/{root['id']}").status_code == 409
+    assert admin.get(f"/api/admin/documents/{document['id']}").status_code == 200
+    assert admin.delete(f"/api/admin/categories/{root['id']}?cascade=true").status_code == 204
+    assert admin.get(f"/api/admin/categories/{leaf['id']}").status_code == 404
+    assert admin.get(f"/api/admin/products/{product['id']}").status_code == 404
+    assert admin.get(f"/api/admin/documents/{document['id']}").status_code == 404
+    assert list((storage_root / "documents").rglob("*")) == []
+
+
+def test_inactive_ancestor_hides_nested_categories_products_and_downloads(admin, anon, document):
+    category = admin.get("/api/admin/categories").json()[0]
+    child = make_category(admin, "Unterkategorie", parent_id=category["id"])
+    admin.put(f"/api/admin/categories/{category['id']}", json={"active": False})
+
+    assert anon.get(f"/{child['slug']}").status_code == 404
+    assert anon.get(f"/documents/{document['id']}/download").status_code == 404
+
+
+def test_admin_dashboard_contains_nested_category_and_product_editing(admin):
+    response = admin.get("/admin")
+    assert response.status_code == 200
+    assert 'id="newcat-parent"' in response.text
+    assert "Übergeordnete Kategorie" in response.text
+    assert "category_id: Number(category.value)" in response.text

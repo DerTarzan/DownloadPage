@@ -75,17 +75,12 @@ def test_compose_binds_app_port_to_localhost_by_default():
     assert '- "${APP_PORT:-8000}:8000"' not in compose
 
 
-def test_compose_routes_caddy_to_app_and_trusts_only_caddy_proxy_ip():
+def test_compose_does_not_include_a_reverse_proxy():
     compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-    caddyfile = (ROOT / "Caddyfile").read_text(encoding="utf-8")
-
-    assert "FORWARDED_ALLOW_IPS: ${PROXY_IP:-172.30.0.2}" in compose
-    assert "ipv4_address: ${PROXY_IP:-172.30.0.2}" in compose
-    assert "DOMAIN: ${DOMAIN:-localhost}" in compose
-    assert '"80:80"' in compose and '"443:443"' in compose
-    assert "default:" in compose and "proxy:" in compose
-    assert "{$DOMAIN}" in caddyfile
-    assert "reverse_proxy app:8000" in caddyfile
+    assert "caddy" not in compose.lower()
+    assert "proxy:" not in compose
+    assert '"80:80"' not in compose and '"443:443"' not in compose
+    assert '"${APP_BIND:-127.0.0.1}:${APP_PORT:-8000}:8000"' in compose
 
 
 def _settings(**overrides) -> Settings:

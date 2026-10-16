@@ -1,7 +1,7 @@
 # Dokumenten-/Produktplattform – Backend
 
 FastAPI · PostgreSQL · SQLAlchemy 2 · Alembic · Argon2 · Docker.
-Struktur: **Startseite → Kategorie → Produkt → Dokument (PDF)**, alles dynamisch aus DB/Storage.
+Struktur: **Startseite → Kategorie → optionale Unterkategorien beliebiger Tiefe → Produkt → Dokument (PDF)**, alles dynamisch aus DB/Storage.
 Das Frontend verwendet Jinja-Vorlagen und separate CSS-Dateien für gemeinsame sowie seitenspezifische Styles.
 
 ## Schnellstart mit Docker
@@ -26,11 +26,11 @@ curl http://localhost:8000/health        # {"status":"ok"}
 | http://localhost:8000/admin/login | Admin-Login (Testseite) |
 | http://localhost:8000/docs | OpenAPI/Swagger (nur mit `DOCS_ENABLED=true`, im Produktionsprofil aus) |
 
-Caddy ist im Compose-Setup enthalten und leitet auf die App weiter. Für Produktion `DOMAIN` in der `.env` auf die echte
-Domain setzen und DNS auf den Server zeigen lassen; Caddy benötigt von außen erreichbare Ports 80 und 443 und verwaltet
-TLS-Zertifikate automatisch. Lokal setzt das Profil `--local` `DOMAIN=:80`; dann ist die Website über `http://localhost`
-erreichbar. Der App-Port bleibt standardmäßig zusätzlich nur an `127.0.0.1` gebunden (`APP_BIND`).
-Das Produktionsprofil setzt `COOKIE_SECURE=true`, der Admin-Login funktioniert dann nur über HTTPS.
+Compose enthält keinen Reverse Proxy und stellt die App standardmäßig nur lokal unter `http://localhost:8000` bereit
+(`APP_BIND=127.0.0.1`). Für Produktion muss ein externer Reverse Proxy HTTPS bereitstellen und an den App-Port
+weiterleiten; DNS und TLS-Zertifikate werden außerhalb dieses Compose-Setups konfiguriert. Das Produktionsprofil setzt
+`COOKIE_SECURE=true`, der Admin-Login funktioniert dann nur über HTTPS. Lokal setzt das Profil `--local`
+`COOKIE_SECURE=false`.
 
 Im Admin-Dashboard können Kategorie- und Produktbilder beim Anlegen hochgeladen sowie später ersetzt oder entfernt werden.
 Erlaubte Bildformate sind PNG, JPEG und WebP; die maximale Dateigröße wird über `MAX_IMAGE_SIZE_MB` festgelegt.
@@ -39,6 +39,11 @@ Beim Start migriert zuerst der einmalige Service `migrate` (`alembic upgrade hea
 Datenbank-Besitzers). Danach läuft in der App `docker-entrypoint.sh`: `python -m app.cli seed-admin` → Server.
 Daten liegen in den Volumes `postgres_data` (DB) und `document_storage` (Bilder/PDFs) und überleben `docker compose down`
 (nur `down -v` löscht sie).
+
+Kategorien können im Admin-Dashboard verschachtelt und zwischen Elternkategorien verschoben werden. Bestehende Kategorien
+bleiben nach Migration `0002_category_parent` Hauptkategorien. Löschen ohne `cascade=true` wird abgewiesen, solange direkte
+Produkte oder Unterkategorien vorhanden sind; eine bestätigte Kaskade entfernt den gesamten Unterbaum mitsamt Produkten,
+Dokumenten und zugehörigen Dateien.
 
 ### Datenbank-Rolle der App (Least Privilege)
 
@@ -211,10 +216,9 @@ curl -b jar -H "X-CSRF-Token: <token>" -F file=@handbuch.pdf -F title=Handbuch l
 
 ## Betriebshinweise
 
-* Caddy bekommt die feste interne IP `PROXY_IP`; die App reserviert davon getrennt `APP_PROXY_IP`, damit Docker die
-  vertrauenswürdige Proxy-IP nicht versehentlich der App zuweist. Bei einem Konflikt mit einem vorhandenen Docker-Subnetz
-  `PROXY_SUBNET`, `PROXY_IP` und `APP_PROXY_IP` passend ändern. **Niemals `FORWARDED_ALLOW_IPS=*` setzen.**
-  Der Port der App sollte nicht direkt öffentlich erreichbar sein (`APP_BIND=127.0.0.1`, Standard).
+* Der Port der App sollte nicht direkt öffentlich erreichbar sein (`APP_BIND=127.0.0.1`, Standard). Wenn ein externer
+  Reverse Proxy `X-Forwarded-*`-Header sendet, `FORWARDED_ALLOW_IPS` in `.env` auf dessen konkrete Quell-IP(s) setzen;
+  **niemals `FORWARDED_ALLOW_IPS=*` setzen.**
 * Der Proxy sollte zusätzlich eigene Limits setzen (z. B. Nginx `client_max_body_size`, `limit_req` für `/auth/login`). Die App
   begrenzt Request-Bodys selbst (`MAX_PDF_SIZE_MB`, `MAX_IMAGE_SIZE_MB`, `MAX_REQUEST_BODY_KB`) und weist schreibende
   Admin-Requests ohne gültige Session ab, bevor der Body gelesen wird.

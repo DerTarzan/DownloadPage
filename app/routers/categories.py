@@ -52,7 +52,10 @@ def update_category(category_id: IdPath, data: CategoryUpdate, svc: CategoryServ
     "/{category_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Kategorie löschen",
-    description="Mit Produkten: 409, außer `cascade=true` (löscht Produkte, Dokumente und Dateien mit).",
+    description=(
+        "Mit Unterkategorien oder Produkten: 409, außer `cascade=true` "
+        "(löscht den gesamten Unterbaum, Produkte, Dokumente und Dateien)."
+    ),
     responses={**ERR_404, **ERR_409},
 )
 def delete_category(

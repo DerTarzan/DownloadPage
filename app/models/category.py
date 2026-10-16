@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Integer, String, Text, true
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -14,6 +14,9 @@ class Category(TimestampMixin, Base):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="RESTRICT"), index=True
+    )
     name: Mapped[str] = mapped_column(String(120))
     slug: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text)
@@ -24,6 +27,15 @@ class Category(TimestampMixin, Base):
     # passive_deletes="all": das Löschen steuern die Services (inkl. Dateien), nie die ORM-Kaskade
     products: Mapped[list["Product"]] = relationship(
         back_populates="category", passive_deletes="all", order_by="Product.sort_order, Product.id"
+    )
+
+    parent: Mapped["Category | None"] = relationship(
+        back_populates="children", remote_side="Category.id"
+    )
+    children: Mapped[list["Category"]] = relationship(
+        back_populates="parent",
+        passive_deletes="all",
+        order_by="Category.sort_order, Category.id",
     )
 
     @property
