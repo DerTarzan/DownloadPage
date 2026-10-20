@@ -29,8 +29,13 @@ _DOCUMENT_REPLACE = re.compile(r"^/api/admin/documents/\d+/file$")
 _IMAGE_UPLOAD = re.compile(r"^/api/admin/(categories|products)/\d+/image$")
 
 
+CHAT_BODY_LIMIT = 8 * 1024  # Chat-Anfragen sind kurze JSON-Texte
+
+
 def body_limit(method: str, path: str, settings: Settings) -> int:
     """Maximale Body-Größe in Bytes für diese Anfrage."""
+    if path == "/api/chat":
+        return min(CHAT_BODY_LIMIT, settings.max_request_body_kb * 1024)
     if (method == "POST" and _DOCUMENT_UPLOAD.match(path)) or (method == "PUT" and _DOCUMENT_REPLACE.match(path)):
         return settings.max_pdf_bytes + MULTIPART_OVERHEAD
     if method == "POST" and _IMAGE_UPLOAD.match(path):
