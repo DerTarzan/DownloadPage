@@ -56,7 +56,8 @@ def test_public_pages_do_not_link_to_admin(admin, anon):
     headers = {"accept": "text/html"}
     pages = [anon.get("/", headers=headers), anon.get("/rollstuehle", headers=headers),
              anon.get("/rollstuehle/produkt-a", headers=headers)]
-    assert all(response.status_code == 200 and "/admin" not in response.text for response in pages)
+    logo = 'src="/static/images/ihre-gesundheitspartner-logo-white.png"'
+    assert all(response.status_code == 200 and "/admin" not in response.text and logo in response.text for response in pages)
 
 
 def test_inactive_category_hides_everything(admin, anon, document):

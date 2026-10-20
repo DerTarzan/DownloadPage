@@ -1,14 +1,14 @@
 :root {
-  --bg: #f3f8fd;
+  --bg: #f5fafe;
   --surface: #fff;
   --text: #14283a;
   --muted: #5c7082;
   --line: #dce7f0;
-  --primary: #0866b2;
-  --primary-h: #064f8c;
-  --primary-deep: #064b85;
-  --on-primary: #fff;
-  --tint: #e5f1fb;
+  --primary: #0094d3;
+  --primary-h: #43afe0;
+  --primary-deep: #00648f;
+  --on-primary: #002638;
+  --tint: #e5f5fc;
   --danger: #b42318;
   --ok: #067647;
   --warn: #b54708;
@@ -25,11 +25,11 @@
     --text: #e8f1fa;
     --muted: #a2b6c9;
     --line: #263e53;
-    --primary: #62b4f2;
-    --primary-h: #8bcafa;
-    --primary-deep: #0d2942;
-    --on-primary: #08243b;
-    --tint: #173653;
+    --primary: #53bce8;
+    --primary-h: #82d2f1;
+    --primary-deep: #063d59;
+    --on-primary: #052c40;
+    --tint: #17394c;
     --danger: #ff8a80;
     --ok: #5ddb9b;
     --warn: #fdb35a;
@@ -131,7 +131,7 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  height: 64px;
+  min-height: 80px;
 }
 
 .brand {
@@ -147,10 +147,10 @@ h2 {
   text-decoration: none;
 }
 
-.brand svg {
+.brand img {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 170px;
+  height: auto;
 }
 
 .site-header nav {
@@ -497,15 +497,8 @@ textarea:focus {
     font-size: .94rem;
   }
 
-  .brand span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .brand svg {
-    width: 30px;
-    height: 30px;
+  .brand img {
+    width: 104px;
   }
 
   .site-header nav {

@@ -46,7 +46,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Füge den lokalen Beispielkatalog ein."
-& docker compose exec -T app python scripts/seed_demo_data.py --docker-local
+& docker compose exec -T app python scripts/seed_demo_data.py
 if ($LASTEXITCODE -ne 0) {
     throw "Der Beispielkatalog wurde nicht vollständig angelegt."
 }

@@ -58,7 +58,8 @@ body.admin {
 
 .side-brand {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: var(--sp-3);
   margin: 0 var(--sp-2) var(--sp-6);
   color: var(--side-text);
@@ -68,10 +69,10 @@ body.admin {
   text-decoration: none;
 }
 
-.side-brand svg {
-  flex: none;
-  width: 38px;
-  height: 38px;
+.side-brand img {
+  width: 100%;
+  max-width: 210px;
+  height: auto;
 }
 
 .side-brand span {
@@ -1213,10 +1214,24 @@ body.admin {
   }
 
   .topbar-title {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
     overflow: hidden;
     font-weight: 700;
-    text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .topbar-title img {
+    flex: none;
+    width: 92px;
+    height: auto;
+  }
+
+  .topbar-title span {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .sidebar {

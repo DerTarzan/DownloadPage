@@ -128,14 +128,14 @@ pip install -r requirements-dev.txt
 
 ### Beispieldaten einfügen
 
-Nach `alembic upgrade head` kannst du die vorhandenen Bilder und die `Gebrauchsanweisung.pdf` aus `storage/` in die Datenbank einfügen:
+Nach `alembic upgrade head` kannst du die Beispieldaten mit dem PNG und der PDF aus `scripts/data/` einfügen:
 
 ```powershell
 python scripts/seed_demo_data.py --dry-run
 python scripts/seed_demo_data.py
 ```
 
-Das Skript legt 50 Beispielkategorien mit jeweils einem Produkt, Bild und PDF an. Es kopiert die vorhandenen Dateien in die verwalteten `storage/images/`- und `storage/documents/`-Ordner, überschreibt keine Dateien und löscht keine bestehenden Daten. Die PDFs sind Kopien derselben vorhandenen Gebrauchsanweisung.
+Das Skript legt 50 Beispielkategorien mit jeweils einem Produkt, Bild und PDF an. Es verwendet `Med_aire_Flex_Wave.png` und `Bellavita (Drive Medical).pdf` für alle Einträge, kopiert sie in die verwalteten `storage/images/`- und `storage/documents/`-Ordner, überschreibt keine Dateien und löscht keine bestehenden Daten.
 
 ## Tests
 

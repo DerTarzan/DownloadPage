@@ -41,6 +41,7 @@ def test_admin_page_assets_exist(admin, path):
     html = admin.get(path).text
     assets = re.findall(r'(?:href|src)="(/static/[^"]+)"', html)
     assert "/static/css/admin.css" in assets and "/static/js/admin.js" in assets
+    assert "/static/images/ihre-gesundheitspartner-logo-white.png" in assets
     for asset in assets:
         assert admin.get(asset).status_code == 200, asset
 
