@@ -11,7 +11,7 @@ from app.core.database import engine
 from app.core.errors import register_exception_handlers
 from app.core.logging_config import setup_logging
 from app.core.request_guard import RequestGuardMiddleware
-from app.routers import admin, auth, categories, documents, products, public
+from app.routers import admin, auth, categories, chat, documents, products, public
 
 logger = logging.getLogger("app")
 
@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(categories.router)
     app.include_router(products.router)
     app.include_router(documents.router)
+    app.include_router(chat.router)
     app.include_router(public.router)
     return app
 

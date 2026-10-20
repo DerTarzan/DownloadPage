@@ -149,6 +149,69 @@ pytest                                                                          
 INSTALL_DEV=true docker compose build app && docker compose run --rm --no-deps app pytest   # nutzt SQLite im Container
 ```
 
+## Chatbot (lokale Produktsuche)
+
+Auf allen öffentlichen Seiten erscheint unten rechts ein rundes Chat-Icon. Besucher stellen dort Fragen in natürlicher Sprache
+(„Ich suche den Rollator STF 300“, „Welche Rollatoren gibt es?“, „Bedienungsanleitung für den STF 300“) und bekommen eine
+kurze Antwort samt Karten mit Links auf die **tatsächlichen** Produkt-, Kategorie- und Dokumentseiten. Der Chat ist rein lokal:
+**kein Cloud-KI-Dienst, kein API-Schlüssel, keine GPU, kein Modell, kein zusätzlicher Container, keine Migration.**
+Er erscheint nicht im Admin-Bereich, auf der Login- und der Wartungsseite.
+
+**Integration:** `app/templates/base.html` bindet `_chat.html` ein (Block `chat`); `static/js/chat.js` baut das Widget auf,
+`static/css/chat.css` nutzt die Farbvariablen aus `base.css` (Hell-/Dunkelmodus, `prefers-reduced-motion`, Mobil). Escape schließt,
+Tastaturbedienung und ARIA (`role="dialog"`, `role="log"`) sind umgesetzt. Der Verlauf und die Sprache bleiben nur in der
+Browser-Sitzung (`sessionStorage`); der Server speichert und loggt keine Chatnachrichten.
+
+**Endpunkt:** `POST /api/chat` mit `{"message": "...", "lang": "de"|"en", "context": {"category_slug", "product_slug"}}` (Kontext optional,
+wird serverseitig gegen den öffentlichen Katalog geprüft). Antwort: `reply`, `kind` (`found`, `multiple`, `category`, `documents`,
+`clarify`, `greeting`, `none`), `results` (Produktkarten mit Dokumenten), `categories`, `similar`.
+
+```
+app/routers/chat.py              Endpunkt, Wartungsmodus, Rate-Limit, Längenprüfung
+app/services/chat/service.py     Ablauf, Antwortgenerator, Karten und Links
+app/services/chat/search.py      Katalogmodell (nur öffentlich Sichtbares) und Relevanzbewertung
+app/services/chat/text.py        Normalisierung, Tippfehler-Toleranz (Damerau-Levenshtein)
+app/services/chat/vocabulary.py  Füllwörter und Dokument-Stichwörter (DE+EN)
+app/services/chat/i18n.py        Antworttexte DE/EN       (UI-Texte: static/js/chat.js)
+app/services/chat/llm.py         optionaler Hook für ein lokales Sprachmodell
+app/repositories/chat_repository.py  drei schlanke Lese-Abfragen
+```
+
+**Suchalgorithmus:** Der Katalog (aktive Kategorien mit aktiver Eltern-Kette, aktive Produkte, aktive Dokumente) wird je Anfrage mit drei
+parametrisierten Abfragen gelesen und im Speicher bewertet. Das funktioniert identisch auf PostgreSQL und SQLite und braucht keine
+Zusatzsoftware; für Kataloge im Bereich von einigen tausend Produkten ist das schnell genug. Die Frage wird gefaltet (Kleinschreibung,
+ä→ae, ß→ss, Akzente weg), in Wörter zerlegt (`STF300` = `STF-300` = `STF 300`) und von Füllwörtern und Dokument-Stichwörtern
+befreit. Je Suchwort zählt der beste Treffer mit Gewicht: Produktname 1,0 · Kategorie 0,7 · Beschreibung 0,6 · Dokumenttitel/-dateiname 0,6.
+Ähnlichkeit: exakt, gleicher Wortstamm (Plural), Präfix, Teilwort, Tippfehler (1 Fehler ab 4, 2 ab 8 Buchstaben, Vertauschungen eingeschlossen).
+**Zahlen müssen exakt passen** (`STF 3000` findet `STF 300` nicht, schlägt ihn aber als ähnlich vor); Zahlen zählen doppelt, fehlende Zahlen
+werten stark ab. Boni für „alle Wörter im Namen“ und „Name exakt“. Treffer unter der Mindestrelevanz oder unter 60 % des besten fallen weg;
+es werden höchstens `CHAT_MAX_RESULTS` gezeigt. Ein eindeutig bester Treffer wird als einzelner Treffer gezeigt, sonst als Liste. Passt eine Kategorie
+(„Welche Rollatoren gibt es?“), wird sie samt Produkten ihres gesamten Unterbaums gezeigt. Ohne Treffer gibt es ähnliche Produkte, sonst die
+Hauptkategorien. Ohne verwertbare Wörter fragt der Bot nach; „… zu diesem Produkt“ bezieht sich auf das zuletzt gezeigte Produkt bzw. die aktuelle Produktseite.
+Die Produkttabelle hat **keine Artikelnummer**; Modellbezeichnungen wie „STF 300“ werden deshalb aus dem Produktnamen (und Dokumenttiteln) gefunden.
+
+**Sprache:** Deutsch ist Standard, Umschaltung per Auswahl im Chatfenster. Bot-Antworten kommen in der gewählten Sprache; die Suche ist sprachunabhängig
+(Füllwörter und Dokument-Stichwörter gibt es in beiden Sprachen), englische Fragen finden also deutsche Produktnamen. Produktnamen, Titel und Dateinamen werden nie übersetzt.
+Die Seite selbst hat kein i18n-System; die Chat-Texte liegen deshalb gebündelt in `chat.js` (UI) und `i18n.py` (Antworten). Ein Test stellt sicher, dass beide Sprachen dieselben Schlüssel haben.
+
+**Sicherheit:** Nur lesend, nur öffentlich Sichtbares (inaktive Produkte/Dokumente/Kategorien oder deren Unterbäume tauchen nicht auf), keine Dateisystempfade
+(Dokument-Links nutzen die vorhandene Produkt-Download-Route), parametrisierte Abfragen, Pydantic-Validierung, Nachrichtenlänge (`CHAT_MAX_MESSAGE_LENGTH`),
+Body-Limit 8 KB, Rate-Limit je IP (`CHAT_RATE_LIMIT_PER_MINUTE`, pro Prozess; hinter einem Proxy `FORWARDED_ALLOW_IPS` setzen, sonst teilen sich alle Besucher eine IP),
+Wartungsmodus gilt auch für den Chat. Nutzertext wird nie als HTML eingefügt (`textContent`), Links nur als relative Pfade. Nachrichten sind reine Suchtexte
+und lösen keine Aktionen aus. Der Chat macht keine ausgehenden Anfragen.
+
+**Konfiguration** (alle optional, siehe `.env.example`): `CHAT_ENABLED` (true), `CHAT_MAX_MESSAGE_LENGTH` (300), `CHAT_MAX_RESULTS` (5), `CHAT_RATE_LIMIT_PER_MINUTE` (20).
+Docker Compose: nichts anpassen; `docker compose up -d --build` genügt (keine neuen Dienste, Ports, Abhängigkeiten oder Migrationen). Zum Abschalten `CHAT_ENABLED=false` und neu starten.
+
+**Optional: lokales Sprachmodell (z. B. Ollama).** `app/services/chat/llm.py` definiert `TermExtractor.extract_terms(message, lang) -> str | None`.
+Eine eigene Implementierung (z. B. Aufruf eines lokalen Ollama-Servers) wird mit `set_term_extractor(...)` registriert, etwa beim App-Start. Das Modell darf nur Suchbegriffe
+aus der Frage ableiten; die Treffer kommen weiterhin ausschließlich aus der Datenbank. Fehler des Modells fallen automatisch auf die Standardlogik zurück.
+Mitgeliefert ist nur die Schnittstelle, keine Modell-Anbindung und keine neue Abhängigkeit.
+
+**Einschränkungen:** Die Bewertung ist regelbasiert (kein semantisches Verständnis; Synonyme wie „Gehhilfe“ ↔ „Rollator“ werden nur gefunden, wenn sie in Namen, Beschreibung,
+Kategorie oder Dokumenttiteln vorkommen). Der Katalog wird je Anfrage neu gelesen (kein Cache); bei sehr großen Katalogen wäre ein kurzer Cache oder eine
+Datenbank-Volltextsuche der nächste Schritt. Das Rate-Limit gilt je Prozess. Die Dokument-Links stammen aus den Datenbank-Metadaten; fehlt eine Datei im Storage, liefert der Download wie auf der Produktseite 404.
+
 ## Architektur
 
 ```
@@ -164,8 +227,8 @@ app/
   models/            User, UserSession, Category, Product, Document, Setting
   schemas/           Pydantic Request-/Response-Modelle
   repositories/      Datenbankzugriff (select/insert/delete)
-  services/          auth, category, product, document, setting, file
-  routers/           public, auth, admin (Settings + HTML), categories, products, documents
+  services/          auth, category, product, document, setting, file, chat/ (Produktsuche)
+  routers/           public, auth, admin (Settings + HTML), categories, products, documents, chat
   templates/         minimale Testseiten
 migrations/          Alembic (0001 = komplettes Schema + Default-Settings)
 storage/             images/ und documents/ (Volume)

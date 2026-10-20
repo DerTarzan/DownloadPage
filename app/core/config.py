@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     login_max_attempts_per_ip: int = Field(default=20, ge=1)  # Fehlversuche je IP über alle Benutzernamen
     login_max_concurrent_hashes: int = Field(default=4, ge=1)  # gleichzeitige Argon2-Prüfungen (je ~64 MiB RAM)
 
+    # Chatbot (lokale Produktsuche, keine externen Dienste)
+    chat_enabled: bool = True
+    chat_max_message_length: int = Field(default=300, ge=20, le=2000)
+    chat_max_results: int = Field(default=5, ge=1, le=20)
+    chat_rate_limit_per_minute: int = Field(default=20, ge=1)  # Anfragen je IP und Minute
+
     log_level: str = "INFO"
 
     def production_warnings(self) -> list[str]:

@@ -20,5 +20,6 @@
   </div></header>
   <main id="main" class="wrap">{% block content %}{% endblock %}</main>
   <footer class="site-footer"><div class="wrap"><span>{{ site_name }}</span></div></footer>
+  {% block chat %}{% if chat_enabled %}{% include "_chat.html" %}{% endif %}{% endblock %}
 </body>
 </html>
