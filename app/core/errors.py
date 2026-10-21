@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exceptions import AppError, MaintenanceError
+from app.i18n import resolve_lang, translate_detail
 from app.templating import templates, wants_html
 
 logger = logging.getLogger("app.errors")
@@ -15,8 +16,9 @@ logger = logging.getLogger("app.errors")
 def _respond(request: Request, status: int, detail: str, headers: dict | None = None, maintenance: bool = False) -> Response:
     if wants_html(request) and not request.url.path.startswith("/api/"):
         template = "maintenance.html" if maintenance else "error.html"
+        shown = translate_detail(resolve_lang(request), detail)  # nur für die HTML-Seite; JSON bleibt unverändert
         return templates.TemplateResponse(
-            request, template, {"status": status, "detail": detail, "message": detail}, status_code=status, headers=headers
+            request, template, {"status": status, "detail": shown, "message": shown}, status_code=status, headers=headers
         )
     content: dict = {"detail": detail}
     if maintenance:

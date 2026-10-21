@@ -184,12 +184,135 @@ h2 {
 }
 
 .site-footer .wrap {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   padding-top: 22px;
   padding-bottom: 22px;
+  min-height: 76px;  /* das Lesezeichen soll nicht über den Footer hinausragen */
+}
+
+.footer-name {
+  margin-left: 74px;  /* Platz für das Sprach-Lesezeichen */
+}
+
+/* Sprachwahl: Lesezeichen, das vom oberen Footer-Rand hängt; das Menü rollt sich nach oben auf */
+.lang-bookmark {
+  position: absolute;
+  top: 0;
+  left: clamp(20px, 3vw, 40px);
+  z-index: 2;
+  margin: 0;
+}
+
+.lang-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 58px;
+  padding: 10px 0 22px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  line-height: 1.2;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 9px), 0 100%);  /* Einkerbung wie beim Lesezeichen */
+  transition: background-color .15s ease, padding-top .2s ease;
+}
+
+.lang-tab::-webkit-details-marker {
+  display: none;
+}
+
+.lang-tab:hover,
+.lang-details[open] > .lang-tab {
+  background: var(--primary-h);
+}
+
+.lang-details[open] > .lang-tab {
+  padding-top: 14px;
+}
+
+.lang-tab:focus-visible {
+  outline: 2px solid var(--on-primary);
+  outline-offset: -5px;  /* innen, sonst schneidet clip-path den Fokusrahmen ab */
+}
+
+.lang-tab svg {
+  width: 20px;
+  height: 20px;
+}
+
+.lang-menu {
+  position: absolute;
+  bottom: 100%;  /* öffnet sich nach oben, direkt über dem Lesezeichen */
+  left: 0;
+  min-width: 156px;
+  padding: 6px;
+  border-radius: 12px 12px 12px 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, .25);
+  transform-origin: bottom left;
+  animation: lang-unroll .24s cubic-bezier(.2, .8, .2, 1);
+}
+
+.lang-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: .95rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lang-menu button:hover {
+  background: var(--tint);
+}
+
+.lang-menu button[aria-current="true"] {
+  background: var(--tint);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.lang-menu button:focus-visible {
+  outline: 2px solid var(--primary-deep);
+  outline-offset: -2px;
+}
+
+.lang-menu svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes lang-unroll {
+  from {
+    opacity: .3;
+    transform: scaleY(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
 
 /* Shared page elements */
@@ -533,6 +656,10 @@ textarea:focus {
     padding-top: 20px;
     padding-bottom: 20px;
   }
+
+  .lang-bookmark {
+    left: 16px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -541,5 +668,6 @@ textarea:focus {
   *::after {
     scroll-behavior: auto !important;
     transition: none !important;
+    animation: none !important;
   }
 }

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Anmelden – {{ site_name }}{% endblock %}
+{% block title %}{{ t('login_title') }} – {{ site_name }}{% endblock %}
 {% block chat %}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/static/css/login.css">{% endblock %}
 {% block content %}
 <div class="auth-card">
-  <h1>Admin-Anmeldung</h1>
-  <p class="login-intro muted-text">Melde dich an, um Inhalte zu verwalten.</p>
+  <h1>{{ t('login_heading') }}</h1>
+  <p class="login-intro muted-text">{{ t('login_intro') }}</p>
   <div id="msg" class="alert err" role="alert"></div>
   <form id="f">
-    <div class="field"><label for="u">Benutzername</label><input id="u" name="username" autocomplete="username" required autofocus></div>
-    <div class="field"><label for="p">Passwort</label><input id="p" name="password" type="password" autocomplete="current-password" required></div>
-    <button class="btn">Anmelden</button>
+    <div class="field"><label for="u">{{ t('login_user') }}</label><input id="u" name="username" autocomplete="username" required autofocus></div>
+    <div class="field"><label for="p">{{ t('login_password') }}</label><input id="p" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn">{{ t('login_submit') }}</button>
   </form>
 </div>
 <script>
@@ -22,7 +22,7 @@ document.getElementById("f").addEventListener("submit", async (e) => {
     body: JSON.stringify({username: fd.get("username"), password: fd.get("password")})});
   if (r.ok) { location.href = "/admin"; return; }
   const body = await r.json().catch(() => ({}));
-  document.getElementById("msg").textContent = typeof body.detail === "string" ? body.detail : "Anmeldung fehlgeschlagen";
+  document.getElementById("msg").textContent = typeof body.detail === "string" ? body.detail : {{ t('login_failed')|tojson }};
   b.disabled = false;
 });
 </script>

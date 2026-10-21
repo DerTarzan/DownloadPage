@@ -1,5 +1,5 @@
-<!doctype html>
-<html lang="de">
+{% set current_lang = lang() %}<!doctype html>
+<html lang="{{ current_lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,15 +10,36 @@
   {% block styles %}{% endblock %}
 </head>
 <body>
-  <a class="skip" href="#main">Zum Inhalt springen</a>
+  <a class="skip" href="#main">{{ t('skip') }}</a>
   <header class="site-header"><div class="wrap bar">
     <a class="brand" href="/">
       <img src="/static/images/ihre-gesundheitspartner-logo-white.png" alt="Ihre Gesundheitspartner">
     </a>
-    {% block nav %}<nav aria-label="Hauptnavigation"><a href="/">Start</a></nav>{% endblock %}
+    {% block nav %}<nav aria-label="{{ t('nav_main') }}"><a href="/">{{ t('nav_home') }}</a></nav>{% endblock %}
   </div></header>
   <main id="main" class="wrap">{% block content %}{% endblock %}</main>
-  <footer class="site-footer"><div class="wrap"><span>{{ site_name }}</span></div></footer>
+  <footer class="site-footer"><div class="wrap">
+    {# Sprachwahl: Lesezeichen am Footer, rollt wie ein Dropdown auf; wirkt auf die gesamte Website (Cookie "lang"). Funktioniert ohne JavaScript. #}
+    <form class="lang-bookmark" method="post" action="/api/language">
+      <input type="hidden" name="next" value="{{ request.url.path }}">
+      <details class="lang-details">
+        <summary class="lang-tab" aria-label="{{ t('lang_choose') }}" title="{{ t('lang_choose') }}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/></svg>
+          <span class="lang-code">{{ current_lang|upper }}</span>
+        </summary>
+        <div class="lang-menu" role="group" aria-label="{{ t('lang_label') }}">
+          {% for code, name in languages %}
+          <button type="submit" name="lang" value="{{ code }}" lang="{{ code }}"{% if code == current_lang %} aria-current="true"{% endif %}>
+            <span>{{ name }}</span>
+            {% if code == current_lang %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>{% endif %}
+          </button>
+          {% endfor %}
+        </div>
+      </details>
+    </form>
+    <span class="footer-name">{{ site_name }}</span>
+  </div></footer>
+  <script src="/static/js/lang.js" defer></script>
   {% block chat %}{% if chat_enabled %}{% include "_chat.html" %}{% endif %}{% endblock %}
 </body>
 </html>
