@@ -86,7 +86,7 @@ def test_settings_page_contains_the_chatbot_switch(admin):
 
 # ---------------------------------------------------------------- Chat-Logzeile ohne Nachrichtentext
 def test_chat_logs_metadata_but_never_the_message_text(shop, anon):
-    secret = "Geheimer Suchbegriff 4711"
+    secret = "Geheimer Suchbegriff 4711"# pragma: allowlist secret
     assert anon.post(CHAT, json={"message": secret}).status_code == 200
     entries = [e for e in log_buffer.since(0) if e["source"] == "chat"]
     assert len(entries) == 1 and "lang=de" in entries[0]["message"] and "antwort=" in entries[0]["message"]

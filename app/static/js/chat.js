@@ -258,6 +258,7 @@
     fab.setAttribute("aria-expanded", "true");
     fab.setAttribute("aria-label", t("close"));
     fab.title = t("close");
+    // Scoll Animation
     scrollDown();
     input.focus({ preventScroll: true });
   }
