@@ -15,7 +15,7 @@ ARG INSTALL_DEV=false
 RUN pip install --require-hashes -r requirements.lock && \
     if [ "$INSTALL_DEV" = "true" ]; then pip install --require-hashes -r requirements-dev.lock; fi
 
-COPY . .
+COPY --chown=app:app . .
 # Storage gehört dem App-User; ein benanntes Volume übernimmt diese Rechte beim ersten Anlegen
 RUN mkdir -p /app/storage/images /app/storage/documents && \
     chown -R app:app /app/storage && \
