@@ -191,13 +191,14 @@ h2 {
   gap: 12px;
   padding-top: 22px;
   padding-bottom: 22px;
+  min-height: 76px;  /* das Lesezeichen soll nicht über den Footer hinausragen */
 }
 
 .footer-name {
   margin-left: 74px;  /* Platz für das Sprach-Lesezeichen */
 }
 
-/* Sprachwahl: Lesezeichen, das vom oberen Footer-Rand hängt und sich wie ein Dropdown aufrollt */
+/* Sprachwahl: Lesezeichen, das vom oberen Footer-Rand hängt; das Menü rollt sich nach oben auf */
 .lang-bookmark {
   position: absolute;
   top: 0;
@@ -251,15 +252,15 @@ h2 {
 
 .lang-menu {
   position: absolute;
-  top: 100%;
+  bottom: 100%;  /* öffnet sich nach oben, direkt über dem Lesezeichen */
   left: 0;
   min-width: 156px;
   padding: 6px;
-  border-radius: 0 12px 12px 12px;
+  border-radius: 12px 12px 12px 0;
   background: var(--surface);
   color: var(--text);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
-  transform-origin: top left;
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, .25);
+  transform-origin: bottom left;
   animation: lang-unroll .24s cubic-bezier(.2, .8, .2, 1);
 }
 
@@ -300,11 +301,6 @@ h2 {
   flex: none;
   width: 16px;
   height: 16px;
-}
-
-/* Beim Aufrollen wächst der Footer sofort mit (ohne Übergang, damit lang.js das fertige Menü einblenden kann) */
-.site-footer:has(.lang-details[open]) .wrap {
-  padding-bottom: 124px;
 }
 
 @keyframes lang-unroll {
@@ -663,10 +659,6 @@ textarea:focus {
 
   .lang-bookmark {
     left: 16px;
-  }
-
-  .site-footer:has(.lang-details[open]) .wrap {
-    padding-bottom: 124px;
   }
 }
 
