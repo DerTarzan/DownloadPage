@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Fehler {{ status }} – {{ site_name }}{% endblock %}
+{% block title %}{{ t('error_title', status=status) }} – {{ site_name }}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/static/css/error.css">{% endblock %}
 {% block content %}
 <div class="center"><div>
   <div class="big-status">{{ status }}</div>
-  <h1>{% if status == 404 %}Seite nicht gefunden{% else %}Das hat leider nicht geklappt{% endif %}</h1>
+  <h1>{% if status == 404 %}{{ t('error_not_found') }}{% else %}{{ t('error_generic') }}{% endif %}</h1>
   <p class="muted-text">{{ detail }}</p>
-  <p><a class="btn" href="/">Zur Startseite</a></p>
+  <p><a class="btn" href="/">{{ t('error_home') }}</a></p>
 </div></div>
 {% endblock %}

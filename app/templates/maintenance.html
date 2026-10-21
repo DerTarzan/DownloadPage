@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Wartungsarbeiten – {{ site_name }}{% endblock %}
+{% block title %}{{ t('maintenance_title') }} – {{ site_name }}{% endblock %}
 {% block chat %}{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/static/css/maintenance.css">{% endblock %}
 {% block nav %}{% endblock %}
 {% block content %}
 <div class="center"><div>
   <svg class="maint-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5 5L3 18l3 3 6.7-6.7a4 4 0 0 0 5-5l-2.5 2.5-2.2-.5-.5-2.2z"/></svg>
-  <h1>Wir sind gleich wieder da</h1>
+  <h1>{{ t('maintenance_heading') }}</h1>
   <p class="maintenance-message muted-text">{{ message }}</p>
 </div></div>
 {% endblock %}

@@ -1,4 +1,5 @@
 /* Chat-Widget der öffentlichen Seiten: Produkt-/Dokumentensuche in natürlicher Sprache (Deutsch/Englisch).
+   Die Sprache wählt der Besucher seitenweit über das Lesezeichen im Footer; der Chat übernimmt <html lang>.
    Alle Inhalte werden per textContent gesetzt (kein HTML-Einfügen); Links nur zu relativen Pfaden der eigenen Seite. */
 (function () {
   "use strict";
@@ -14,7 +15,7 @@
   var I18N = {
     de: {
       title: "Produktsuche", open: "Chat öffnen", close: "Chat schließen", newChat: "Neue Unterhaltung",
-      language: "Sprache", placeholder: "Frage eingeben, z. B. ein Produktname …", send: "Senden",
+      placeholder: "Frage eingeben, z. B. ein Produktname …", send: "Senden",
       searching: "Suche läuft …", you: "Du", bot: "Assistent",
       greeting: "Hallo! Ich helfe dir dabei, Produkte, Kategorien und Dokumente zu finden. Was suchst du?",
       productPage: "Zur Produktseite", categoryPage: "Zur Kategorie", documents: "Dokumente",
@@ -29,7 +30,7 @@
     },
     en: {
       title: "Product search", open: "Open chat", close: "Close chat", newChat: "New conversation",
-      language: "Language", placeholder: "Type a question, e.g. a product name …", send: "Send",
+      placeholder: "Type a question, e.g. a product name …", send: "Send",
       searching: "Searching …", you: "You", bot: "Assistant",
       greeting: "Hello! I can help you find products, categories and documents. What are you looking for?",
       productPage: "Open product page", categoryPage: "Open category", documents: "Documents",
@@ -45,11 +46,11 @@
   };
 
   /* ---------- Zustand (nur diese Browser-Sitzung) ---------- */
-  var state = { lang: "de", messages: [], context: null };
+  var pageLang = (document.documentElement.lang || "de").slice(0, 2).toLowerCase();
+  var state = { lang: pageLang === "en" ? "en" : "de", messages: [], context: null };
   try {
     var saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || "null");
-    if (saved && (saved.lang === "de" || saved.lang === "en") && Array.isArray(saved.messages)) {
-      state.lang = saved.lang;
+    if (saved && Array.isArray(saved.messages)) {
       state.messages = saved.messages.slice(-MAX_STORED);
       state.context = saved.context || null;
     }
@@ -57,7 +58,7 @@
 
   function persist() {
     try {
-      sessionStorage.setItem(STORE_KEY, JSON.stringify({ lang: state.lang, messages: state.messages.slice(-MAX_STORED), context: state.context }));
+      sessionStorage.setItem(STORE_KEY, JSON.stringify({ messages: state.messages.slice(-MAX_STORED), context: state.context }));
     } catch (e) { /* ignorieren */ }
   }
   function t(key) { return I18N[state.lang][key]; }
@@ -126,19 +127,13 @@
   var head = el("div", "chat-head");
   var title = el("h2", null);
   title.id = "chat-title";
-  var langSel = el("select");
-  [["de", "Deutsch"], ["en", "English"]].forEach(function (o) {
-    var opt = el("option", null, o[1]);
-    opt.value = o[0];
-    langSel.appendChild(opt);
-  });
   var newBtn = el("button", "chat-icon-btn");
   newBtn.type = "button";
   newBtn.appendChild(icon(ICON_NEW));
   var closeBtn = el("button", "chat-icon-btn");
   closeBtn.type = "button";
   closeBtn.appendChild(icon(ICON_CLOSE));
-  head.append(title, langSel, newBtn, closeBtn);
+  head.append(title, newBtn, closeBtn);
 
   var log = el("div", "chat-log");
   log.setAttribute("role", "log");
@@ -231,8 +226,6 @@
 
   function render() {
     title.textContent = t("title");
-    langSel.value = state.lang;
-    langSel.setAttribute("aria-label", t("language"));
     newBtn.setAttribute("aria-label", t("newChat"));
     newBtn.title = t("newChat");
     closeBtn.setAttribute("aria-label", t("close"));
@@ -284,12 +277,7 @@
     if (e.key === "Escape" && isOpen()) { closeChat(panel.contains(document.activeElement) || document.activeElement === fab); }
   });
 
-  /* ---------- Sprache / Neustart ---------- */
-  langSel.addEventListener("change", function () {
-    state.lang = langSel.value === "en" ? "en" : "de";
-    persist();
-    render();
-  });
+  /* ---------- Neustart ---------- */
   newBtn.addEventListener("click", function () {
     if (busy) return;
     state.messages = [];

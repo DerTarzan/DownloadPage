@@ -1,6 +1,6 @@
-"""Antworttexte des Bots (Deutsch/Englisch). Die UI-Beschriftungen stehen in static/js/chat.js; die Suche selbst ist sprachunabhängig."""
-SUPPORTED = ("de", "en")
-DEFAULT_LANG = "de"
+"""Antworttexte des Bots (Deutsch/Englisch). Die UI-Beschriftungen stehen in static/js/chat.js; die Suche selbst ist sprachunabhängig.
+Die Sprache wählt der Besucher seitenweit über das Lesezeichen im Footer (siehe app/i18n.py)."""
+from app.i18n import DEFAULT_LANG, SUPPORTED
 
 MESSAGES: dict[str, dict[str, str]] = {
     "de": {

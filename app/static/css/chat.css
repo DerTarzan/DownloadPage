@@ -78,7 +78,6 @@
   font-size: 1rem;
 }
 
-.chat-head select,
 .chat-icon-btn {
   height: 34px;
   border: 1px solid rgba(255, 255, 255, .35);
@@ -88,16 +87,6 @@
   font: inherit;
   font-size: .85rem;
   cursor: pointer;
-}
-
-.chat-head select {
-  flex: none;
-  padding: 0 6px;
-}
-
-.chat-head select option {
-  background: var(--surface);
-  color: var(--text);
 }
 
 .chat-icon-btn {
@@ -112,7 +101,6 @@
   height: 18px;
 }
 
-.chat-head select:hover,
 .chat-icon-btn:hover {
   background: rgba(255, 255, 255, .2);
 }

@@ -11,7 +11,7 @@ from app.core.database import engine
 from app.core.errors import register_exception_handlers
 from app.core.logging_config import setup_logging
 from app.core.request_guard import RequestGuardMiddleware
-from app.routers import admin, auth, categories, chat, documents, products, public
+from app.routers import admin, auth, categories, chat, documents, language, products, public
 
 logger = logging.getLogger("app")
 
@@ -51,6 +51,8 @@ def create_app() -> FastAPI:
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "same-origin")
         path = request.url.path
+        if response.headers.get("content-type", "").startswith("text/html"):
+            response.headers.append("Vary", "Cookie")  # HTML hängt von der gewählten Sprache (Cookie) ab
         if path.startswith("/media/"):
             response.headers.setdefault("Content-Security-Policy", "default-src 'none'")
         if path.startswith(("/admin", "/auth", "/api")):
@@ -71,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(products.router)
     app.include_router(documents.router)
     app.include_router(chat.router)
+    app.include_router(language.router)
     app.include_router(public.router)
     return app
 
