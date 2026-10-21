@@ -53,7 +53,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "login_heading": "Admin-Anmeldung",
         "login_intro": "Melde dich an, um Inhalte zu verwalten.",
         "login_user": "Benutzername",
-        "login_password": "Passwort",
+        "login_password": "Passwort", # pragma: allowlist secret
         "login_submit": "Anmelden",
         "login_failed": "Anmeldung fehlgeschlagen",
     },
@@ -89,7 +89,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "login_heading": "Admin sign-in",
         "login_intro": "Sign in to manage content.",
         "login_user": "Username",
-        "login_password": "Password",
+        "login_password": "Password",# pragma: allowlist secret
         "login_submit": "Sign in",
         "login_failed": "Sign-in failed",
     },
