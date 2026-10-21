@@ -1,6 +1,8 @@
 import logging
 import sys
 
+from app.core.log_buffer import install_log_buffer
+
 
 def setup_logging(level: str = "INFO") -> None:
     root = logging.getLogger()
@@ -10,3 +12,4 @@ def setup_logging(level: str = "INFO") -> None:
         root.addHandler(handler)
     root.setLevel(level.upper())
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    install_log_buffer()  # Live-Logs im Admin-Bereich

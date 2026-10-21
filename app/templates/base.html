@@ -40,6 +40,6 @@
     <span class="footer-name">{{ site_name }}</span>
   </div></footer>
   <script src="/static/js/lang.js" defer></script>
-  {% block chat %}{% if chat_enabled %}{% include "_chat.html" %}{% endif %}{% endblock %}
+  {% block chat %}{% if chat_active() %}{% include "_chat.html" %}{% endif %}{% endblock %}
 </body>
 </html>

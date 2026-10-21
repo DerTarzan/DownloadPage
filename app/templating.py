@@ -5,12 +5,13 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import pass_context
 
 from app.core.config import get_settings
+from app.core.database import SessionLocal
 from app.i18n import LANGUAGE_NAMES, SUPPORTED, resolve_lang, translate
+from app.services.setting_service import SettingService
 
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 templates.env.globals["site_name"] = get_settings().app_name
 templates.env.globals["docs_enabled"] = get_settings().docs_enabled
-templates.env.globals["chat_enabled"] = get_settings().chat_enabled
 templates.env.globals["chat_max_length"] = get_settings().chat_max_message_length
 templates.env.globals["languages"] = [(code, LANGUAGE_NAMES[code]) for code in SUPPORTED]
 
@@ -27,6 +28,18 @@ def _t(ctx, key: str, **params: object) -> str:
     return translate(resolve_lang(ctx["request"]), key, **params)
 
 
+def _chat_active() -> bool:
+    """Soll das Chat-Widget auf öffentlichen Seiten erscheinen? Server-Konfiguration UND Schalter im Admin-Bereich."""
+    if not get_settings().chat_enabled:
+        return False
+    try:
+        with SessionLocal() as db:
+            return SettingService(db).is_chat_enabled()
+    except Exception:  # DB-Störung: Fehlerseiten müssen trotzdem rendern; die Chat-API prüft selbst
+        return True
+
+
+templates.env.globals["chat_active"] = _chat_active
 templates.env.globals["lang"] = _lang
 templates.env.globals["t"] = _t
 
