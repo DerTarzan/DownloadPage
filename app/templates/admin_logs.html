@@ -1,0 +1,32 @@
+{% extends "admin_base.html" %}
+{% block title %}Live-Logs – Verwaltung – {{ site_name }}{% endblock %}
+{% block page_title %}Live-Logs{% endblock %}
+{% block page_lead %}Was gerade auf der Website passiert. Neue Einträge erscheinen automatisch.{% endblock %}
+{% block page_actions %}<span id="log-status" class="badge" role="status">Verbinde …</span>{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div class="toolbar-search"><label class="sr-only" for="log-search">Logs durchsuchen</label><input id="log-search" type="search" autocomplete="off" placeholder="Im Log suchen"></div>
+  <div class="toolbar-filter"><label class="sr-only" for="log-level">Mindeststufe</label>
+    <select id="log-level"><option value="DEBUG">Alle Stufen</option><option value="INFO">Ab Info</option><option value="WARNING">Ab Warnung</option><option value="ERROR">Nur Fehler</option></select></div>
+  <div class="toolbar-filter"><label class="sr-only" for="log-source">Herkunft</label>
+    <select id="log-source">
+      <option value="">Alle Quellen</option><option value="access">Zugriffe</option><option value="audit">Änderungen im Admin</option>
+      <option value="chat">Chatbot</option><option value="app">Anwendung</option><option value="server">Server</option>
+    </select></div>
+  <div class="toolbar-buttons">
+    <button id="log-pause" class="btn btn-sm btn-ghost" type="button" aria-pressed="false">Pausieren</button>
+    <button id="log-clear" class="btn btn-sm btn-ghost" type="button">Anzeige leeren</button>
+  </div>
+  <p id="log-count" class="toolbar-count" aria-live="off"></p>
+</div>
+
+<section class="section log-section" aria-label="Log-Einträge">
+  <div id="log-view" class="log-view" role="log" aria-live="off" tabindex="0"></div>
+  <p id="log-empty" class="log-empty" hidden></p>
+  <button id="log-latest" class="btn btn-sm log-latest" type="button" hidden>Zu den neuesten Einträgen ↓</button>
+</section>
+<p class="hint">Die Einträge liegen nur im Arbeitsspeicher (die letzten 2000) und sind nach einem Neustart der App weg. Die vollständigen Logs stehen weiter in <code>docker compose logs app</code>. Healthchecks und diese Ansicht selbst werden nicht aufgelistet.</p>
+{% endblock %}
+
+{% block scripts %}<script src="/static/js/admin_logs.js"></script>{% endblock %}

@@ -24,7 +24,7 @@ curl http://localhost:8000/health        # {"status":"ok"}
 |---|---|
 | http://localhost:8000/ | Startseite (Kategorien) |
 | http://localhost:8000/admin/login | Admin-Login |
-| http://localhost:8000/admin | Verwaltung: Übersicht · `/admin/catalog` Kategorien & Produkte · `/admin/documents` Dokumente · `/admin/upload` PDF hochladen · `/admin/settings` Einstellungen |
+| http://localhost:8000/admin | Verwaltung: Übersicht · `/admin/catalog` Kategorien & Produkte · `/admin/documents` Dokumente · `/admin/upload` PDF hochladen · `/admin/logs` Live-Logs · `/admin/settings` Einstellungen (Wartungsmodus, Chatbot an/aus) |
 | http://localhost:8000/docs | OpenAPI/Swagger (nur mit `DOCS_ENABLED=true`, im Produktionsprofil aus) |
 
 Compose enthält keinen Reverse Proxy und stellt die App standardmäßig nur lokal unter `http://localhost:8000` bereit
@@ -192,7 +192,9 @@ Die Produkttabelle hat **keine Artikelnummer**; Modellbezeichnungen wie „STF 3
 
 **Sprache:** Deutsch ist Standard, Umschaltung per Auswahl im Chatfenster. Bot-Antworten kommen in der gewählten Sprache; die Suche ist sprachunabhängig
 (Füllwörter und Dokument-Stichwörter gibt es in beiden Sprachen), englische Fragen finden also deutsche Produktnamen. Produktnamen, Titel und Dateinamen werden nie übersetzt.
-Die Seite selbst hat kein i18n-System; die Chat-Texte liegen deshalb gebündelt in `chat.js` (UI) und `i18n.py` (Antworten). Ein Test stellt sicher, dass beide Sprachen dieselben Schlüssel haben.
+Die Sprache (Deutsch/Englisch) wählen Besucher seitenweit über das Lesezeichen im Footer (Cookie `lang`, Texte in `app/i18n.py`); der Chat übernimmt sie von der Seite. Die Chat-Texte liegen in `chat.js` (UI) und `services/chat/i18n.py` (Antworten). Tests stellen sicher, dass alle Sprachen dieselben Schlüssel haben.
+
+**Chatbot an-/ausschalten:** In der Verwaltung unter *Einstellungen → Chatbot* (`GET/PUT /api/admin/chatbot`). Deaktiviert verschwindet der Chat-Button auf allen öffentlichen Seiten und `/api/chat` antwortet mit 404. `CHAT_ENABLED=false` in der `.env` sperrt den Chatbot weiterhin serverseitig und hat Vorrang vor dem Schalter.
 
 **Sicherheit:** Nur lesend, nur öffentlich Sichtbares (inaktive Produkte/Dokumente/Kategorien oder deren Unterbäume tauchen nicht auf), keine Dateisystempfade
 (Dokument-Links nutzen die vorhandene Produkt-Download-Route), parametrisierte Abfragen, Pydantic-Validierung, Nachrichtenlänge (`CHAT_MAX_MESSAGE_LENGTH`),
@@ -277,6 +279,18 @@ curl -c jar -X POST localhost:8000/auth/login -H 'content-type: application/json
 # csrf_token aus der Antwort übernehmen:
 curl -b jar -H "X-CSRF-Token: <token>" -F file=@handbuch.pdf -F title=Handbuch localhost:8000/api/admin/products/1/documents
 ```
+
+## Live-Logs (Verwaltung → Live-Logs)
+
+Zeigt in Echtzeit, was auf der Website passiert: Zugriffe, Änderungen im Admin (Audit), Chat-Anfragen, Fehler. Neue Einträge erscheinen binnen Sekundenbruchteilen
+(Server-Sent Events: `GET /api/admin/logs/stream`, Rückblick: `GET /api/admin/logs`; nur für angemeldete Admins). Filter nach Stufe, Quelle und Text, Pausieren, Anzeige leeren.
+
+* Die Einträge liegen nur im Arbeitsspeicher (letzte 2000, Ringpuffer) und sind nach einem Neustart weg. Die vollständigen Logs stehen weiter in `docker compose logs app`.
+* Der Puffer gilt pro Prozess; die App läuft mit einem uvicorn-Worker. Bei mehreren Workern sähe jede Ansicht nur die Einträge ihres Workers.
+* Chat-Anfragen erscheinen nur als Metadaten (Sprache, Antwortart, Trefferzahl), der Nachrichtentext wird nie geloggt. Healthchecks und die Log-Ansicht selbst werden ausgeblendet.
+* Was angezeigt wird, richtet sich nach `LOG_LEVEL` (Standard `INFO`).
+* Der Stream endet nach 5 Minuten von selbst; der Browser verbindet sich automatisch neu und prüft dabei die Anmeldung erneut.
+* Hinter Caddy ist normalerweise nichts einzustellen (`text/event-stream` wird sofort durchgereicht). Bleibt die Anzeige auf „Verbinde …“ hängen, im `reverse_proxy`-Block `flush_interval -1` ergänzen.
 
 ## Betriebshinweise
 

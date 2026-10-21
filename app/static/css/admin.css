@@ -1459,3 +1459,141 @@ body.admin {
     transition: none !important;
   }
 }
+
+/* ---------- Live-Logs ---------- */
+.log-section {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+
+.log-view {
+  height: clamp(320px, 62dvh, 760px);
+  overflow: auto;
+  padding: var(--sp-2) 0;
+  background: var(--bg);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: .82rem;
+  line-height: 1.5;
+}
+
+.log-view:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: -3px;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: 6.6rem 4.4rem 4.6rem minmax(0, 1fr);
+  gap: 0 var(--sp-3);
+  align-items: baseline;
+  padding: 2px var(--sp-4);
+  border-left: 3px solid transparent;
+}
+
+.log-row:hover {
+  background: var(--tint);
+}
+
+.log-time,
+.log-source {
+  color: var(--muted);
+}
+
+.log-level {
+  font-weight: 700;
+}
+
+.log-msg {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.log-exc {
+  grid-column: 4;
+  margin: var(--sp-1) 0 var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  overflow: auto;
+  border-radius: var(--radius-s, 8px);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  color: var(--text);
+  font: inherit;
+  white-space: pre-wrap;
+}
+
+.lvl-warning {
+  border-left-color: var(--warn);
+}
+
+.lvl-warning .log-level {
+  color: var(--warn);
+}
+
+.lvl-error,
+.lvl-critical {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+}
+
+.lvl-error .log-level,
+.lvl-critical .log-level {
+  color: var(--danger);
+}
+
+.lvl-debug .log-msg {
+  color: var(--muted);
+}
+
+.src-audit {
+  color: var(--primary-deep, var(--primary));
+  font-weight: 700;
+}
+
+.log-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: var(--sp-6);
+  color: var(--muted);
+  text-align: center;
+  pointer-events: none;
+}
+
+.log-empty[hidden] {
+  display: none;
+}
+
+.log-latest {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  box-shadow: var(--shadow);
+}
+
+.log-latest[hidden] {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .log-row {
+    grid-template-columns: 6.4rem minmax(0, 1fr);
+    padding: var(--sp-1) var(--sp-3);
+  }
+
+  .log-time {
+    grid-row: 1;
+  }
+
+  .log-level,
+  .log-source {
+    display: none;  /* auf dem Handy trägt die Farbe der Zeile die Stufe */
+  }
+
+  .log-msg,
+  .log-exc {
+    grid-column: 2;
+  }
+}

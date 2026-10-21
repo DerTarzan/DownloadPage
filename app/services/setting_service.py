@@ -6,6 +6,7 @@ from app.services.base import commit_or_conflict
 
 KEY_MAINTENANCE_MODE = "maintenance_mode"
 KEY_MAINTENANCE_MESSAGE = "maintenance_message"
+KEY_CHAT_ENABLED = "chat_enabled"
 DEFAULT_MAINTENANCE_MESSAGE = "Die Website befindet sich derzeit im Wartungsmodus. Bitte versuchen Sie es später erneut."
 
 
@@ -19,6 +20,14 @@ class SettingService:
 
     def maintenance_message(self) -> str:
         return self.repo.get(KEY_MAINTENANCE_MESSAGE) or DEFAULT_MAINTENANCE_MESSAGE
+
+    def is_chat_enabled(self) -> bool:
+        """Schalter im Admin-Bereich. Ohne Eintrag ist der Chatbot an. (Zusätzlich kann CHAT_ENABLED=false ihn serverseitig sperren.)"""
+        return (self.repo.get(KEY_CHAT_ENABLED) or "true").strip().lower() != "false"
+
+    def set_chat_enabled(self, enabled: bool) -> None:
+        self.repo.set(KEY_CHAT_ENABLED, "true" if enabled else "false")
+        commit_or_conflict(self.db)
 
     def get(self) -> SiteSettingsOut:
         return SiteSettingsOut(maintenance_mode=self.is_maintenance(), maintenance_message=self.maintenance_message())
